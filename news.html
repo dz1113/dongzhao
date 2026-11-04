@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>新闻 Tab 选项卡</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Microsoft YaHei", sans-serif;
+            background-color: #f5f5f5;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        /* Tab 按钮栏 */
+        .tab-nav {
+            display: flex;
+            border-bottom: 2px solid #e0e0e0;
+            background-color: #fafafa;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 16px 0;
+            text-align: center;
+            cursor: pointer;
+            font-size: 16px;
+            color: #666;
+            border: none;
+            background: none;
+            position: relative;
+            transition: color 0.3s;
+        }
+
+        .tab-btn:hover {
+            color: #1890ff;
+        }
+
+        .tab-btn.active {
+            color: #1890ff;
+            font-weight: bold;
+        }
+
+        .tab-btn.active::after {
+            content: "";
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background-color: #1890ff;
+        }
+
+        /* Tab 内容区 */
+        .tab-content {
+            padding: 30px;
+        }
+
+        .tab-panel {
+            display: none;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        .tab-panel h2 {
+            color: #333;
+            margin-bottom: 16px;
+            font-size: 20px;
+        }
+
+        .news-list {
+            list-style: none;
+        }
+
+        .news-list li {
+            padding: 12px 0;
+            border-bottom: 1px dashed #eee;
+            color: #555;
+            font-size: 14px;
+            line-height: 1.8;
+        }
+
+        .news-list li:last-child {
+            border-bottom: none;
+        }
+
+        .news-list li::before {
+            content: "•";
+            color: #1890ff;
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Tab 导航按钮 -->
+        <div class="tab-nav" data-tab-group="news">
+            <button class="tab-btn active" data-tab="domestic">国内新闻</button>
+            <button class="tab-btn" data-tab="province">省内新闻</button>
+            <button class="tab-btn" data-tab="international">国际新闻</button>
+            <button class="tab-btn" data-tab="hottest">最热新闻</button>
+        </div>
+
+        <!-- Tab 内容面板 -->
+        <div class="tab-content">
+            <div class="tab-panel active" data-panel="domestic">
+                <h2>国内新闻</h2>
+                <ul class="news-list">
+                    <li>全国两会胜利闭幕，多项民生政策落地实施</li>
+                    <li>我国新能源汽车产销量连续九年位居全球第一</li>
+                    <li>南水北调工程累计调水突破700亿立方米</li>
+                    <li>我国成功发射新一代通信卫星，覆盖更广区域</li>
+                </ul>
+            </div>
+
+            <div class="tab-panel" data-panel="province">
+                <h2>省内新闻</h2>
+                <ul class="news-list">
+                    <li>本省重大工程项目集中开工，投资额超千亿</li>
+                    <li>省级科技创新园区正式揭牌，助力产业升级</li>
+                    <li>全省高铁运营里程突破3000公里</li>
+                    <li>本省举办国际文化旅游节，吸引百万游客</li>
+                </ul>
+            </div>
+
+            <div class="tab-panel" data-panel="international">
+                <h2>国际新闻</h2>
+                <ul class="news-list">
+                    <li>联合国大会通过全球气候合作新决议</li>
+                    <li>多国签署数字经济合作协议</li>
+                    <li>国际空间站完成新一轮科学实验任务</li>
+                    <li>全球贸易论坛探讨供应链稳定新方案</li>
+                </ul>
+            </div>
+
+            <div class="tab-panel" data-panel="hottest">
+                <h2>最热新闻</h2>
+                <ul class="news-list">
+                    <li>人工智能大模型发布，引发全球科技圈热议</li>
+                    <li>世界杯预选赛激战正酣，国足表现亮眼</li>
+                    <li>知名导演新片上映，票房破亿创纪录</li>
+                    <li>国产游戏获国际大奖，展现文化软实力</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/tab.js"></script>
+</body>
+</html>
