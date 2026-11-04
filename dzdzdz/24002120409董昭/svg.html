@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SVG图标</title>
+    <script src="https://at.alicdn.com/t/c/font_5232876_vbpggdn229.js"></script>
+    <link rel="stylesheet" href="./css/svg.css">
+</head>
+
+<body>
+    <h3>SVG图标</h3>
+    <div class="tab-nav">
+        
+        <div class="tab-item active" onclick="changeTab(this)">
+            <svg class="icon" aria-hidden="true">
+                <use xlink:href="#icon-shouye"></use>
+            </svg>
+            <span>首页</span>
+        </div>
+
+        <div class="tab-item" onclick="changeTab(this)">
+            <svg class="icon" aria-hidden="true">
+                <use xlink:href="#icon-wode"></use>
+            </svg>
+            <span>我的</span>
+        </div>
+
+        <div class="tab-item" onclick="changeTab(this)">
+            <svg class="icon" aria-hidden="true">
+                <use xlink:href="#icon-dianzan"></use>
+            </svg>
+            <span>点赞</span>
+        </div>
+
+        <div class="tab-item" onclick="changeTab(this)">
+            <svg class="icon" aria-hidden="true">
+                <use xlink:href="#icon-gouwuchekong"></use>
+            </svg>
+            <span>购物车</span>
+        </div>
+
+    </div>
+    <script>
+        // 写一个函数当我点击当前的item的时候，颜色发生变化
+        function changeTab(current) {
+            let tabs = document.querySelectorAll('.tab-item');
+            for (let i = 0; i < tabs.length; i++) {
+                tabs[i].classList.remove('active');
+            }
+            current.classList.add('active');
+        }
+    </script>
+</body>
+</html>

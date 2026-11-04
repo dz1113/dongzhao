@@ -103,6 +103,7 @@ git branch
 | 错误 | 处理 |
 |------|------|
 | `Permission denied (publickey)` | SSH 公钥未添加到 GitHub，提示用户到 https://github.com/settings/keys 添加公钥（公钥路径 `~/.ssh/id_ed25519.pub`） |
+| `connect to host github.com port 22: Connection refused` | 网络封锁了 22 端口。改用 443 端口推送：先执行 `git config core.sshCommand "ssh -p 443 -o Hostname=ssh.github.com"`（一次性设置，仓库内长期生效），再重新 `git push` |
 | `rejected` / `non-fast-forward` | 远程有新提交，先 `git pull --rebase origin <分支>` 再推送 |
 | `src refspec ... does not match any` | 没有任何提交，先做一次 commit |
 
