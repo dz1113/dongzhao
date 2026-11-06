@@ -1,390 +1,98 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>股票排行榜</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>课堂实践中心 · 高级网页设计</title>
+<style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{
+        font-family:"Microsoft YaHei","PingFang SC",system-ui,sans-serif;
+        background:#f6f8fc;color:#1f2937;
+        min-height:100vh;
+    }
+    .hub-wrap{max-width:1000px;margin:0 auto;padding:40px 20px 60px}
 
-        body {
-            font-family: "Microsoft YaHei", "SimSun", Arial, sans-serif;
-            background-color: #f0f0f0;
-            padding: 30px;
-        }
+    /* 头部 */
+    .hub-head{
+        background:linear-gradient(135deg,#0f2b5b,#1d5bbf);
+        border-radius:20px;padding:36px 38px;color:#fff;
+        box-shadow:0 12px 30px rgba(15,43,91,.3);margin-bottom:28px;
+    }
+    .hub-head .hub-badge{
+        display:inline-block;padding:5px 14px;border-radius:999px;
+        background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);
+        font-size:13px;letter-spacing:2px;margin-bottom:14px;
+    }
+    .hub-head h1{font-size:30px;letter-spacing:1px;line-height:1.4}
+    .hub-head h1 b{color:#ffd166}
+    .hub-head p{margin-top:12px;font-size:14.5px;color:#d9e3f5;line-height:2}
 
-        .rank-box {
-            width: 520px;
-            background: #fff;
-            border: 1px solid #e0e0e0;
-            margin: 0 auto;
-        }
+    /* 卡片列表 */
+    .hub-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:20px}
+    .hub-card{
+        background:#fff;border:1px solid #e8ecf5;border-radius:18px;
+        padding:26px 28px;box-shadow:0 4px 14px rgba(31,41,55,.06);
+        text-decoration:none;color:inherit;display:block;
+        transition:transform .25s,box-shadow .25s,border-color .25s;
+        position:relative;overflow:hidden;
+    }
+    .hub-card::before{
+        content:"";position:absolute;left:0;top:0;bottom:0;width:5px;
+        background:linear-gradient(#0f2b5b,#1d5bbf);
+    }
+    .hub-card:hover{
+        transform:translateY(-4px);
+        box-shadow:0 14px 30px rgba(15,43,91,.16);
+        border-color:#c7d8f8;
+    }
+    .hub-card .hub-icon{font-size:26px;margin-bottom:10px;display:block}
+    .hub-card h2{font-size:19px;color:#111827;margin-bottom:8px}
+    .hub-card p{font-size:14px;color:#6b7280;line-height:1.9;min-height:52px}
+    .hub-card .hub-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+    .hub-card .hub-tags i{
+        font-style:normal;font-size:12px;color:#1d5bbf;
+        background:#e8f0ff;border:1px solid #c7d8f8;
+        padding:3px 10px;border-radius:999px;
+    }
+    .hub-card .hub-go{
+        display:inline-block;margin-top:16px;font-size:13.5px;
+        font-weight:bold;color:#e8890c;
+    }
 
-        /* Tab 选项卡 */
-        .tab-nav {
-            display: flex;
-            border-bottom: 1px solid #e0e0e0;
-        }
-
-        .tab-btn {
-            flex: 1;
-            padding: 12px 0;
-            text-align: center;
-            font-size: 16px;
-            color: #666;
-            cursor: pointer;
-            border: none;
-            background: none;
-            position: relative;
-        }
-
-        .tab-btn:hover {
-            color: #333;
-        }
-
-        .tab-btn.active {
-            color: #c00;
-            font-weight: bold;
-        }
-
-        /* 表格 */
-        .tab-panel {
-            display: none;
-        }
-
-        .tab-panel.active {
-            display: block;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        thead th {
-            background-color: #f8f8f8;
-            color: #999;
-            font-size: 13px;
-            font-weight: normal;
-            padding: 10px 12px;
-            text-align: right;
-            border-bottom: 1px solid #eee;
-        }
-
-        thead th:first-child,
-        tbody td:first-child {
-            text-align: left;
-        }
-
-        tbody td {
-            padding: 12px;
-            font-size: 14px;
-            color: #333;
-            text-align: right;
-            border-bottom: 1px solid #f0f0f0;
-        }
-
-        tbody tr:last-child td {
-            border-bottom: none;
-        }
-
-        tbody td.name-col {
-            text-align: left;
-            color: #333;
-        }
-
-        tbody td.rank-col {
-            text-align: left;
-            color: #999;
-            width: 36px;
-        }
-
-        /* 涨（红色）*/
-        .up {
-            color: #c00;
-        }
-
-        /* 跌（绿色）*/
-        .down {
-            color: #0a0;
-        }
-
-        /* 课堂实践入口 */
-        .page-nav {
-            width: 520px;
-            margin: 16px auto 0;
-            text-align: center;
-        }
-
-        .page-nav a {
-            display: inline-block;
-            font-size: 14px;
-            color: #c00;
-            text-decoration: none;
-            border: 1px solid #e0e0e0;
-            background: #fff;
-            padding: 10px 18px;
-            transition: all 0.2s;
-        }
-
-        .page-nav a:hover {
-            background: #c00;
-            color: #fff;
-            border-color: #c00;
-        }
-    </style>
+    footer{text-align:center;margin-top:36px;color:#9ca3af;font-size:13px;line-height:2}
+</style>
 </head>
 <body>
-    <div class="rank-box">
-        <!-- Tab 选项卡 -->
-        <div class="tab-nav">
-            <button class="tab-btn active" data-tab="sh-up">沪涨</button>
-            <button class="tab-btn" data-tab="sh-down">沪跌</button>
-            <button class="tab-btn" data-tab="sz-up">深涨</button>
-            <button class="tab-btn" data-tab="sz-down">深跌</button>
-        </div>
+<div class="hub-wrap">
 
-        <!-- 沪涨 -->
-        <div class="tab-panel active" data-panel="sh-up">
-            <table>
-                <thead>
-                    <tr>
-                        <th>&nbsp;</th>
-                        <th>名称</th>
-                        <th>价格</th>
-                        <th>涨跌</th>
-                        <th>涨幅</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td class="rank-col">1.</td>
-                        <td class="name-col">威衡能</td>
-                        <td class="up">8.88</td>
-                        <td class="up">+3.35</td>
-                        <td class="up">60.58%</td>
-                    </tr>
-                    <tr>
-                        <td class="rank-col">2.</td>
-                        <td class="name-col">天津松江</td>
-                        <td class="up">8.16</td>
-                        <td class="up">+0.65</td>
-                        <td class="up">8.66%</td>
-                    </tr>
-                    <tr>
-                        <td class="rank-col">3.</td>
-                        <td class="name-col">金瑞科技</td>
-                        <td class="up">8.79</td>
-                        <td class="up">+0.42</td>
-                        <td class="up">5.02%</td>
-                    </tr>
-                    <tr>
-                        <td class="rank-col">4.</td>
-                        <td class="name-col">宏发股份</td>
-                        <td class="up">17.22</td>
-                        <td class="up">+0.82</td>
-                        <td class="up">5.00%</td>
-                    </tr>
-                    <tr>
-                        <td class="rank-col">5.</td>
-                        <td class="name-col">杭齿前进</td>
-                        <td class="up">7.23</td>
-                        <td class="up">+0.34</td>
-                        <td class="up">4.93%</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-
-        <!-- 沪跌 -->
-        <div class="tab-panel" data-panel="sh-down">
-            <table>
-                <thead>
-                    <tr>
-                        <th>&nbsp;</th>
-                        <th>名称</th>
-                        <th>价格</th>
-                        <th>涨跌</th>
-                        <th>涨幅</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td class="rank-col">1.</td>
-                        <td class="name-col">ST长油</td>
-                        <td class="down">1.25</td>
-                        <td class="down">-0.14</td>
-                        <td class="down">-10.07%</td>
-                    </tr>
-                    <tr>
-                        <td class="rank-col">2.</td>
-                        <td class="name-col">中国西电</td>
-                        <td class="down">5.80</td>
-                        <td class="down">-0.48</td>
-                        <td class="down">-7.64%</td>
-                    </tr>
-                    <tr>
-                        <td class="rank-col">3.</td>
-                        <td class="name-col">华电重工</td>
-                        <td class="down">8.33</td>
-                        <td class="down">-0.55</td>
-                        <td class="down">-6.19%</td>
-                    </tr>
-                    <tr>
-                        <td class="rank-col">4.</td>
-                        <td class="name-col">龙宇燃油</td>
-                        <td class="down">9.17</td>
-                        <td class="down">-0.51</td>
-                        <td class="down">-5.25%</td>
-                    </tr>
-                    <tr>
-                        <td class="rank-col">5.</td>
-                        <td class="name-col">中海发展</td>
-                        <td class="down">10.44</td>
-                        <td class="down">-0.53</td>
-                        <td class="down">-4.83%</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-
-        <!-- 深涨 -->
-        <div class="tab-panel" data-panel="sz-up">
-            <table>
-                <thead>
-                    <tr>
-                        <th>&nbsp;</th>
-                        <th>名称</th>
-                        <th>价格</th>
-                        <th>涨跌</th>
-                        <th>涨幅</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td class="rank-col">1.</td>
-                        <td class="name-col">天顺风能</td>
-                        <td class="up">10.52</td>
-                        <td class="up">+0.96</td>
-                        <td class="up">10.04%</td>
-                    </tr>
-                    <tr>
-                        <td class="rank-col">2.</td>
-                        <td class="name-col">兴源过滤</td>
-                        <td class="up">16.02</td>
-                        <td class="up">+1.58</td>
-                        <td class="up">10.03%</td>
-                    </tr>
-                    <tr>
-                        <td class="rank-col">3.</td>
-                        <td class="name-col">北京君正</td>
-                        <td class="up">36.92</td>
-                        <td class="up">+3.36</td>
-                        <td class="up">10.01%</td>
-                    </tr>
-                    <tr>
-                        <td class="rank-col">4.</td>
-                        <td class="name-col">美盛文化</td>
-                        <td class="up">32.87</td>
-                        <td class="up">+2.99</td>
-                        <td class="up">10.01%</td>
-                    </tr>
-                    <tr>
-                        <td class="rank-col">5.</td>
-                        <td class="name-col">骅威股份</td>
-                        <td class="up">15.16</td>
-                        <td class="up">+1.38</td>
-                        <td class="up">10.01%</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-
-        <!-- 深跌 -->
-        <div class="tab-panel" data-panel="sz-down">
-            <table>
-                <thead>
-                    <tr>
-                        <th>&nbsp;</th>
-                        <th>名称</th>
-                        <th>价格</th>
-                        <th>涨跌</th>
-                        <th>涨幅</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td class="rank-col">1.</td>
-                        <td class="name-col">京东方A</td>
-                        <td class="down">4.12</td>
-                        <td class="down">-0.46</td>
-                        <td class="down">-10.00%</td>
-                    </tr>
-                    <tr>
-                        <td class="rank-col">2.</td>
-                        <td class="name-col">银河电子</td>
-                        <td class="down">7.02</td>
-                        <td class="down">-0.52</td>
-                        <td class="down">-6.90%</td>
-                    </tr>
-                    <tr>
-                        <td class="rank-col">3.</td>
-                        <td class="name-col">同洲电子</td>
-                        <td class="down">6.45</td>
-                        <td class="down">-0.42</td>
-                        <td class="down">-6.12%</td>
-                    </tr>
-                    <tr>
-                        <td class="rank-col">4.</td>
-                        <td class="name-col">德赛电池</td>
-                        <td class="down">28.50</td>
-                        <td class="down">-1.80</td>
-                        <td class="down">-5.94%</td>
-                    </tr>
-                    <tr>
-                        <td class="rank-col">5.</td>
-                        <td class="name-col">欣旺达</td>
-                        <td class="down">12.33</td>
-                        <td class="down">-0.66</td>
-                        <td class="down">-5.08%</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+    <div class="hub-head">
+        <span class="hub-badge">高 级 网 页 设 计 · 课 堂 实 践 中 心</span>
+        <h1>高级网页设计 · <b>课堂实践中心</b></h1>
+        <p>这里汇总了课堂上的实践作品与操作任务，点击下方卡片即可进入对应页面。</p>
     </div>
 
-    <!-- 课堂实践入口 -->
-    <nav class="page-nav">
-        <a href="swiper-task.html">Swiper 轮播课堂任务 →</a>
-    </nav>
+    <div class="hub-grid">
 
-    <script>
-        // Tab 切换逻辑
-        (function () {
-            var nav = document.querySelector('.tab-nav');
-            nav.addEventListener('click', function (e) {
-                var btn = e.target.closest('.tab-btn');
-                if (!btn) return;
+        <a class="hub-card" href="stock-rank.html">
+            <span class="hub-icon">📈</span>
+            <h2>股票排行榜</h2>
+            <p>沪涨 / 沪跌 / 深涨 / 深跌 四个选项卡，切换股票涨跌榜单，练习 Tab 选项卡的交互实现。</p>
+            <div class="hub-tags"><i>Tab 选项卡</i><i>DOM 操作</i><i>事件监听</i></div>
+            <span class="hub-go">进入页面 →</span>
+        </a>
 
-                var tabKey = btn.getAttribute('data-tab');
-                var box = nav.parentElement;
-                var content = box.querySelectorAll('.tab-panel');
-                var btns = nav.querySelectorAll('.tab-btn');
+        <a class="hub-card" href="swiper-task.html">
+            <span class="hub-icon">🎞️</span>
+            <h2>Swiper 轮播课堂任务</h2>
+            <p>大国重器光影展：四个轮播任务，从最小可拖动轮播，到圆点箭头、自动播放与六种切换效果。</p>
+            <div class="hub-tags"><i>Swiper</i><i>轮播</i><i>autoplay</i><i>effect</i></div>
+            <span class="hub-go">进入页面 →</span>
+        </a>
 
-                // 1. 清除所有选中状态
-                btns.forEach(function (b) { b.classList.remove('active'); });
-                content.forEach(function (p) { p.classList.remove('active'); });
+    </div>
 
-                // 2. 设置当前选中状态
-                btn.classList.add('active');
-                var panel = box.querySelector('.tab-panel[data-panel="' + tabKey + '"]');
-                if (panel) panel.classList.add('active');
-            });
-        })();
-    </script>
+    <footer>课堂实践中心 · 高级网页设计 · 2026-2027-1</footer>
+</div>
 </body>
 </html>
