@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>大国重器光影展 · Swiper 轮播（新增邮轮 + 键盘控制）</title>
+<!-- Swiper 官方组件库 CDN 引入 -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    font-family:"Microsoft YaHei","PingFang SC",system-ui,sans-serif;
+    background:linear-gradient(160deg,#0b1c3d,#12305f 55%,#0b1c3d);
+    min-height:100vh;display:flex;align-items:center;justify-content:center;
+    padding:40px 16px;
+  }
+  .show-wrap{width:100%;max-width:920px}
+
+  .show-head{text-align:center;color:#fff;margin-bottom:22px}
+  .show-head h1{font-size:26px;letter-spacing:2px}
+  .show-head h1 b{color:#ffd166}
+  .show-head p{margin-top:10px;font-size:13.5px;color:#b9c9e8;line-height:1.9}
+  .show-head .tip{
+    display:inline-block;margin-top:10px;font-size:12.5px;color:#0b1c3d;
+    background:#ffd166;border-radius:999px;padding:4px 16px;font-weight:bold;
+  }
+
+  /* 轮播主体 */
+  .swiper{
+    border-radius:18px;overflow:hidden;
+    box-shadow:0 18px 44px rgba(0,0,0,.45);
+    --swiper-theme-color:#fff;
+  }
+  .swiper-slide{position:relative;height:460px}
+  .swiper-slide img{width:100%;height:100%;object-fit:cover;display:block}
+  /* 图片上的字幕条 */
+  .cap{
+    position:absolute;left:0;right:0;bottom:0;padding:44px 24px 16px;color:#fff;
+    background:linear-gradient(transparent,rgba(4,12,30,.85));
+  }
+  .cap h3{font-size:20px;letter-spacing:1px}
+  .cap p{font-size:13px;color:#d6e2f8;margin-top:5px}
+  .cap .new{
+    display:inline-block;font-size:11.5px;color:#0b1c3d;background:#ffd166;
+    border-radius:4px;padding:1px 8px;margin-right:8px;font-weight:bold;vertical-align:2px;
+  }
+
+  /* 分页器圆点配色 */
+  .swiper-pagination-bullet{background:#fff;opacity:.4}
+  .swiper-pagination-bullet-active{background:#ffd166;opacity:1;width:22px;border-radius:6px}
+
+  /* 左右箭头配色 */
+  .swiper-button-next,.swiper-button-prev{
+    width:44px;height:44px;border-radius:50%;
+    background:rgba(10,25,55,.6);color:#fff;
+    --swiper-navigation-size:18px;transition:background .2s;
+  }
+  .swiper-button-next:hover,.swiper-button-prev:hover{background:#e8890c}
+</style>
+</head>
+<body>
+<div class="show-wrap">
+
+  <div class="show-head">
+    <h1>大国重器光影展 · <b>Swiper 轮播</b></h1>
+    <p>五件国之重器 + 首艘国产大型邮轮「爱达·魔都号」，共 6 张作品轮播</p>
+    <span class="tip">⌨️ 新增：按键盘 ← → 方向键也能切换</span>
+  </div>
+
+  <!-- swiper 容器：轮播整体结构（wrapper / slide / 分页器 / 箭头） -->
+  <div class="swiper">
+    <div class="swiper-wrapper">
+
+      <div class="swiper-slide">
+        <img src="swiper-imgs/tiangong_1.jpg" alt="天宫空间站">
+        <div class="cap"><h3>天宫空间站</h3><p>2022 年全面建成 · 中国人的太空家园</p></div>
+      </div>
+
+      <div class="swiper-slide">
+        <img src="swiper-imgs/fuxing_1.jpg" alt="复兴号动车组">
+        <div class="cap"><h3>复兴号动车组</h3><p>350 km/h · 世界商业运营最高时速</p></div>
+      </div>
+
+      <div class="swiper-slide">
+        <img src="swiper-imgs/c919_1.jpg" alt="C919大飞机">
+        <div class="cap"><h3>C919 大飞机</h3><p>2023 年商业首航 · 国产干线客机翱翔蓝天</p></div>
+      </div>
+
+      <div class="swiper-slide">
+        <img src="swiper-imgs/fendouzhe_1.jpg" alt="奋斗者号">
+        <div class="cap"><h3>奋斗者号</h3><p>10909 米 · 触碰地球第四极马里亚纳海沟</p></div>
+      </div>
+
+      <div class="swiper-slide">
+        <img src="swiper-imgs/fast_1.jpg" alt="中国天眼">
+        <div class="cap"><h3>中国天眼 FAST</h3><p>500 米口径 · 世界最大单口径射电望远镜</p></div>
+      </div>
+
+      <!-- 第 6 张（新增）：爱达·魔都号邮轮 -->
+      <div class="swiper-slide">
+        <img src="imgs/adora-cruise.jpg" alt="爱达·魔都号邮轮">
+        <div class="cap"><h3><span class="new">新增</span>爱达·魔都号</h3><p>首艘国产大型邮轮 · 中国邮轮产业新篇章</p></div>
+      </div>
+
+    </div>
+
+    <!-- 分页器（圆点） -->
+    <div class="swiper-pagination"></div>
+    <!-- 左右箭头 -->
+    <div class="swiper-button-prev"></div>
+    <div class="swiper-button-next"></div>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+<script>
+  const swiper = new Swiper('.swiper', {
+    loop: true,                    // 无缝循环：最后一张继续翻会回到第一张
+
+    autoplay: {                    // 自动播放配置
+      delay: 3000,                 // delay：每张幻灯片停留 3000 毫秒（3 秒）后自动翻到下一张
+      disableOnInteraction: false  // 用户拖动/点箭头后，自动播放不停止，继续按 delay 翻页
+    },
+
+    pagination: {                  // 分页器（底部圆点）
+      el: '.swiper-pagination',
+      clickable: true              // 点击圆点可直接跳转到对应幻灯片
+    },
+
+    navigation: {                  // 左右箭头
+      nextEl: '.swiper-button-next',
+      prevEl: '.swiper-button-prev'
+    },
+
+    keyboard: {                    // ★ 课堂扩展：键盘控制（课堂没讲过的功能）
+      enabled: true,               // 开启键盘控制：按 ← 方向键切换上一张，→ 方向键切换下一张
+      onlyInViewport: true         // 仅当轮播在浏览器可视区域内时才响应按键，避免页面滚动时误触发
+    }
+  });
+</script>
+</body>
+</html>
