@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>摇一摇 · 今日菜谱</title>
+<!--
+  作者：董昭
+  学号：24002120409
+  建立时间：2026-11-25
+  使用大模型：DeepSeek-V4.1-Flash
+  功能：摇一摇手机抽今日菜谱，DeviceMotionEvent 加速度检测，含降级方案
+-->
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:linear-gradient(160deg,#ffeaa7,#fdcb6e,#e17055);min-height:100vh;color:#2d1b1b;font-family:"PingFang SC","Microsoft YaHei",sans-serif}
+body{display:flex;flex-direction:column;align-items:center;padding:40px 20px 60px}
+
+/* ── 标题 ── */
+.dz_title{text-align:center;margin-top:30px}
+.dz_title h1{font-size:28px;letter-spacing:4px;color:#2d1b1b}
+.dz_title p{font-size:14px;color:#8b5a2b;margin-top:8px;letter-spacing:2px}
+
+/* ── 摇动动画容器 ── */
+.dz_shake-box{
+  position:relative;width:220px;height:220px;margin:40px auto 30px;
+  border-radius:50%;
+  background:radial-gradient(circle,#fff5e1 0%,#f39c12 100%);
+  box-shadow:0 14px 40px rgba(230,126,34,.45),inset 0 -8px 20px rgba(0,0,0,.1),inset 0 8px 20px rgba(255,255,255,.4);
+  display:flex;align-items:center;justify-content:center;
+  /* ⭐ 摇动动画：水平左右快速摆动 */
+}
+.dz_shake-box.dz-shaking{animation:dz_shake .35s cubic-bezier(.36,.07,.19,.97) both}
+@keyframes dz_shake{
+  10%,90%{transform:translate3d(-4px,0,0) rotate(-2deg)}
+  20%,80%{transform:translate3d(6px,0,0) rotate(2deg)}
+  30%,50%,70%{transform:translate3d(-10px,0,0) rotate(-3deg)}
+  40%,60%{transform:translate3d(10px,0,0) rotate(3deg)}
+}
+.dz_shake-box .dz_icon{font-size:80px}
+.dz_shake-box.dz-success .dz_icon{animation:dz_pop .4s cubic-bezier(.4,1.4,.4,1) both}
+@keyframes dz_pop{
+  0%{transform:scale(.6);opacity:.2}
+  60%{transform:scale(1.2);opacity:1}
+  100%{transform:scale(1);opacity:1}
+}
+
+/* ── 菜谱结果卡片 ── */
+.dz_result{
+  width:100%;max-width:340px;background:#fff;border-radius:18px;padding:24px;
+  box-shadow:0 10px 28px rgba(0,0,0,.1);margin-top:10px;
+  text-align:center;opacity:0;transform:translateY(16px) scale(.96);
+  transition:all .35s cubic-bezier(.4,0,.2,1);
+}
+.dz_result.show{opacity:1;transform:translateY(0) scale(1)}
+.dz_result .dz_tag{display:inline-block;background:#fdcb6e;color:#8b5a2b;font-size:12px;padding:4px 12px;border-radius:999px;letter-spacing:2px;margin-bottom:10px}
+.dz_result h2{font-size:24px;color:#2d1b1b;margin-bottom:4px;letter-spacing:3px}
+.dz_result .dz_en{font-size:12px;color:#c9a063;letter-spacing:1px;margin-bottom:12px}
+.dz_result p{font-size:13px;color:#555;line-height:1.9}
+.dz_result .dz_emo{font-size:48px;margin:8px 0 2px}
+
+/* ── 状态提示 ── */
+.dz_status{font-size:13px;color:#8b5a2b;margin-top:14px;text-align:center;letter-spacing:1px}
+.dz_status.dz-cooling{color:#d35400}
+
+/* ── 降级按钮 ── */
+.dz_fallback{margin-top:30px;text-align:center;display:none}
+.dz_fallback button{
+  background:#e17055;color:#fff;border:none;border-radius:999px;
+  font-size:16px;padding:14px 36px;letter-spacing:3px;cursor:pointer;
+  box-shadow:0 8px 22px rgba(225,112,85,.4);transition:all .2s;font-family:inherit;
+}
+.dz_fallback button:active{transform:scale(.95)}
+.dz_fallback p{font-size:12px;color:#8b5a2b;margin-top:10px;line-height:1.8}
+
+/* ── iOS 权限按钮 ── */
+.dz_ios-perm{display:none;margin-top:20px;text-align:center}
+.dz_ios-perm button{
+  background:#2d1b1b;color:#fff;border:none;border-radius:999px;
+  font-size:14px;padding:12px 28px;letter-spacing:2px;cursor:pointer;font-family:inherit;
+}
+</style>
+</head>
+<body>
+
+<div class="dz_title">
+  <h1>📱 摇一摇 · 今日菜谱</h1>
+  <p>摇动手机，抽你今天吃什么</p>
+</div>
+
+<!-- 摇动容器 -->
+<div class="dz_shake-box" id="dz_shakeBox">
+  <span class="dz_icon" id="dz_icon">🤔</span>
+</div>
+
+<!-- 状态提示 -->
+<div class="dz_status" id="dz_status">正在监听传感器…</div>
+
+<!-- iOS 13+ 权限请求按钮（iPhone 需要用户主动授权） -->
+<div class="dz_ios-perm" id="dz_iosPerm">
+  <button id="dz_permBtn">🔐 点击授权运动传感器</button>
+</div>
+
+<!-- 菜谱结果卡片 -->
+<div class="dz_result" id="dz_result">
+  <span class="dz_tag">今日推荐</span>
+  <div class="dz_emo" id="dz_emo">🍽️</div>
+  <h2 id="dz_foodName">？？？</h2>
+  <div class="dz_en" id="dz_foodEn">—</div>
+  <p id="dz_foodDesc">摇一摇手机就知道啦~</p>
+</div>
+
+<!-- 降级：点我抽一次（桌面端/不支持传感器设备） -->
+<div class="dz_fallback" id="dz_fallback">
+  <button id="dz_btnDraw">🎲 点我抽一次</button>
+  <p>当前设备不支持运动传感器<br>请用真机或 Chrome DevTools 设备模式打开</p>
+</div>
+
+<script>
+  // ═══════════════════════════════════════════════════════════
+  //  全部变量以 dz_ 开头（任务要求）
+  // ═══════════════════════════════════════════════════════════
+
+  const dz_shakeBox = document.getElementById('dz_shakeBox');
+  const dz_status = document.getElementById('dz_status');
+  const dz_result = document.getElementById('dz_result');
+  const dz_fallback = document.getElementById('dz_fallback');
+  const dz_iosPerm = document.getElementById('dz_iosPerm');
+  const dz_permBtn = document.getElementById('dz_permBtn');
+  const dz_btnDraw = document.getElementById('dz_btnDraw');
+  const dz_icon = document.getElementById('dz_icon');
+
+  // ── 菜谱池 ──
+  const dz_foods = [
+    { name: '北京烤鸭',  en: 'Peking Duck',    emo: '🦆', desc: '皮脆肉嫩，配甜面酱黄瓜卷薄饼，京菜之王。' },
+    { name: '麻婆豆腐',  en: 'Mapo Tofu',      emo: '🌶️', desc: '麻辣鲜香烫嫩，下饭神器，川菜经典。' },
+    { name: '小笼包',    en: 'Xiao Long Bao',  emo: '🥟', desc: '薄皮大馅十八褶，汤汁鲜醇，上海早点王。' },
+    { name: '东坡肉',    en: 'Dongpo Pork',    emo: '🍖', desc: '肥而不腻入口即化，苏东坡所创，浙菜经典。' },
+    { name: '兰州拉面',  en: 'Lanzhou Noodles',emo: '🍜', desc: '一清二白三红四绿五黄，西北风味代表。' },
+    { name: '宫保鸡丁',  en: 'Kung Pao Chicken',emo:'🍗', desc: '酸甜微辣，花生米香酥，川菜代表作。' },
+    { name: '螺蛳粉',    en: 'Luosifen',       emo: '🍲', desc: '闻着臭吃着香，酸笋螺蛳汤，广西特色。' },
+    { name: '火锅',      en: 'Hot Pot',        emo: '🍲', desc: '一锅煮万物，麻辣鲜香，聚会首选。' },
+  ];
+
+  // ── 阈值与冷却 ──
+  const dz_SHAKE_THRESHOLD = 18;     // ⭐ 合成加速度 > 18 判定摇动（任务要求）
+  const dz_COOLDOWN = 1500;           // ⭐ 1.5 秒冷却防重复触发
+  let dz_lastShake = 0;               // 上次触发时间戳
+
+  // ── 状态 ──
+  let dz_supported = false;           // 设备是否支持 devicemotion
+
+  // ╔═════════════════════════════════════════════════════════╗
+  // ║  1. 检测设备能力 + iOS 权限请求                        ║
+  // ╚═════════════════════════════════════════════════════════╝
+
+  // 检测是否支持 DeviceMotionEvent
+  // iOS 13+ 还需要检查 requestPermission 是否存在（用户必须点按钮授权）
+  function dz_checkSupport() {
+    if (typeof DeviceMotionEvent === 'undefined') {
+      // 桌面浏览器 → 不支持
+      dz_supported = false;
+      dz_showFallback('当前设备不支持运动传感器');
+      return;
+    }
+
+    // iOS 13+ 必须用户主动授权
+    if (typeof DeviceMotionEvent.requestPermission === 'function') {
+      dz_iosPerm.style.display = 'block';
+      dz_status.textContent = '请点击下方按钮授权运动传感器';
+      dz_permBtn.addEventListener('click', dz_requestPermission);
+    } else {
+      // Android / 低版本 iOS / 其他：直接监听
+      dz_startListening();
+    }
+  }
+
+  // iOS 权限请求（必须在用户交互回调里调用，否则会被浏览器拦截）
+  function dz_requestPermission() {
+    DeviceMotionEvent.requestPermission()
+      .then(res => {
+        if (res === 'granted') {
+          dz_iosPerm.style.display = 'none';
+          dz_startListening();
+        } else {
+          dz_status.textContent = '权限被拒绝 😢';
+          dz_showFallback('权限被拒绝');
+        }
+      })
+      .catch(() => {
+        dz_status.textContent = '权限请求失败';
+        dz_showFallback('权限请求失败');
+      });
+  }
+
+  // ╔═════════════════════════════════════════════════════════╗
+  // ║  2. 监听 devicemotion，计算合成加速度                  ║
+  // ╚═════════════════════════════════════════════════════════╝
+
+  // accelerationIncludingGravity 是 x/y/z 三轴的合成加速度
+  // 合成加速度 = sqrt(x² + y² + z²)；静止时约 9.8（重力），摇动时远大于此
+  function dz_startListening() {
+    dz_supported = true;
+    dz_status.textContent = '✅ 传感器已就绪，摇一摇试试！';
+
+    // 用 try-catch 包裹，部分浏览器虽声明支持但实际会抛错
+    try {
+      window.addEventListener('devicemotion', dz_onMotion, false);
+      // 加一个超时兜底：2 秒后仍没有数据返回 → 视为不支持
+      setTimeout(() => {
+        if (dz_supported && dz_lastShake === 0) {
+          dz_status.textContent = '等待传感器数据…';
+        }
+      }, 2000);
+    } catch (e) {
+      dz_supported = false;
+      dz_showFallback('传感器监听失败：' + e.message);
+    }
+  }
+
+  // ╔═════════════════════════════════════════════════════════╗
+  // ║  3. motion 回调：计算合成加速度 → 超阈值 → 冷却 → 抽菜 ║
+  // ╚═════════════════════════════════════════════════════════╝
+
+  function dz_onMotion(dz_event) {
+    const acc = dz_event.accelerationIncludingGravity;
+    if (!acc) return;  // 部分设备可能返回 null
+
+    // 合成加速度 = sqrt(x² + y² + z²)，单位 m/s²
+    const dz_x = acc.x || 0;
+    const dz_y = acc.y || 0;
+    const dz_z = acc.z || 0;
+    const dz_mag = Math.sqrt(dz_x * dz_x + dz_y * dz_y + dz_z * dz_z);
+
+    // 超阈值 + 冷却中 → 忽略；阈值 18 约为重力 1.8 倍，足够区分摇动
+    const now = Date.now();
+    if (dz_mag > dz_SHAKE_THRESHOLD && now - dz_lastShake > dz_COOLDOWN) {
+      dz_lastShake = now;
+      dz_trigger();
+    }
+  }
+
+  // ╔═════════════════════════════════════════════════════════╗
+  // ║  4. 触发动画 + 抽菜显示                                ║
+  // ╚═════════════════════════════════════════════════════════╝
+
+  function dz_trigger() {
+    // ① 触发摇动动画
+    dz_shakeBox.classList.remove('dz-shaking');
+    // 强制 reflow 让动画重置（否则连续触发不会重播）
+    void dz_shakeBox.offsetWidth;
+    dz_shakeBox.classList.add('dz-shaking');
+
+    // ② 抽菜
+    const food = dz_foods[Math.floor(Math.random() * dz_foods.length)];
+
+    // ③ 延迟一点让摇动动画先跑完再显示结果
+    setTimeout(() => {
+      dz_icon.textContent = food.emo;
+      dz_shakeBox.classList.remove('dz-shaking');
+      dz_shakeBox.classList.add('dz-success');
+
+      dz_result.querySelector('.dz_tag').textContent = '今日推荐 · ' + food.name;
+      document.getElementById('dz_foodName').textContent = food.name;
+      document.getElementById('dz_foodEn').textContent = food.en;
+      document.getElementById('dz_foodDesc').textContent = food.desc;
+      document.getElementById('dz_emo').textContent = food.emo;
+
+      // 弹出动画：加 .show 触发 transition
+      dz_result.classList.remove('show');
+      void dz_result.offsetWidth;
+      dz_result.classList.add('show');
+
+      // 冷却中提示
+      const now = Date.now();
+      dz_status.textContent = `🎲 抽中了！1.5 秒后可以再摇…`;
+      dz_status.classList.add('dz-cooling');
+      setTimeout(() => {
+        dz_status.textContent = '✅ 可以再摇一次啦！';
+        dz_status.classList.remove('dz-cooling');
+      }, dz_COOLDOWN);
+    }, 400);
+  }
+
+  // ╔═════════════════════════════════════════════════════════╗
+  // ║  5. 降级：设备不支持 / iOS 权限被拒 → 显示点我抽一次   ║
+  // ╚═════════════════════════════════════════════════════════╝
+
+  function dz_showFallback(reason) {
+    dz_status.textContent = reason || '当前设备不支持';
+    dz_fallback.style.display = 'block';
+  }
+
+  dz_btnDraw.addEventListener('click', () => {
+    dz_lastShake = Date.now();  // 点按钮也走冷却
+    dz_trigger();
+  });
+
+  // ── 启动检测 ──
+  dz_checkSupport();
+</script>
+</body>
+</html>

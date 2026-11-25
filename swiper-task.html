@@ -91,7 +91,7 @@
     <h1>Swiper 轮播组件 · <b>大国重器光影展（学生版）</b></h1>
     <p>HTML 骨架和 CSS 样式已经全部搭好，图片也备齐了——但这个页面的轮播<b>一个都不会动</b>！
     因为所有 <b>&lt;script&gt; 里的 JS 初始化代码都被抽走了</b>。你的任务：把 4 个轮播全部"救活"。</p>
-    <div class="wy-goals"><i>任务 1 · 救活最小轮播</i><i>任务 2 · 装上圆点和箭头</i><i>任务 3 · 让它自己翻页</i><i>任务 4 · 六种效果随心换</i></div>
+    <div class="wy-goals"><i>任务 1 · 救活最小轮播</i><i>任务 2 · 装上圆点和箭头</i><i>任务 3 · 让它自己翻页</i><i>任务 4 · 七种效果随心换</i></div>
   </div>
 
   <div class="wy-rule">
@@ -194,9 +194,9 @@
   <div class="wy-sec">
     <div class="wy-sec-head">
       <span class="wy-no">4</span>
-      <h2>六种效果随心换<small>effect 参数 + 进阶：按钮实时切换</small></h2>
+      <h2>七种效果随心换<small>effect 参数 + 进阶：按钮实时切换</small></h2>
     </div>
-    <p class="wy-txt">改一个 <code>effect</code> 参数，轮播立刻换一种"性格"：slide / fade / cube / coverflow / flip / cards。上面的 6 个按钮已经绑好了点击事件（读取 <code>btn.dataset.fx</code>），JS 还需要你补两段。</p>
+    <p class="wy-txt">改一个 <code>effect</code> 参数，轮播立刻换一种"性格"：slide / fade / cube / coverflow / flip / cards / creative。上面的 7 个按钮已经绑好了点击事件（读取 <code>btn.dataset.fx</code>），JS 还需要你补两段。</p>
     <div class="wy-req">
       <h3>✍️ 任务 4 要求</h3>
       <p><b>基础分</b>：初始化 <code>#wySw4</code>，实现循环 + 自动播放（3.2 秒）+ 圆点分页器（#wyPag4），初始效果为 <code>'slide'</code>，动画时长 800 毫秒。</p>
@@ -204,12 +204,13 @@
       <span class="wy-star">⭐ 验证标准：基础分——轮播自动翻页；进阶分——点 cube 按钮变 3D 立方体、点 fade 变淡入淡出</span>
     </div>
     <div class="wy-fx">
-      <button class="wy-on" data-fx="slide">slide 平推（默认·稳重）</button>
+      <button data-fx="slide">slide 平推（默认·稳重）</button>
       <button data-fx="fade">fade 淡入淡出（优雅）</button>
       <button data-fx="cube">cube 3D 立方体（炫酷）</button>
       <button data-fx="coverflow">coverflow 画廊堆叠（沉浸）</button>
       <button data-fx="flip">flip 翻页（复古）</button>
       <button data-fx="cards">cards 卡片（俏皮）</button>
+      <button class="wy-on" data-fx="creative">creative 电影墙（大片感）</button>
     </div>
     <div class="wy-demo">
       <span class="wy-demo-tag">🎛️ 演示四 · 效果实验台（点按钮切换 effect）</span>
@@ -223,6 +224,38 @@
             <div class="swiper-slide"><img src="swiper-imgs/fast_1.jpg" alt="中国天眼"><div class="wy-cap"><h3>中国天眼 FAST</h3><p>相册页面爱用 coverflow</p></div></div>
           </div>
           <div class="swiper-pagination" id="wyPag4"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 任务 5：键盘方向键控制 ← → ↑ ↓ -->
+  <div class="wy-sec">
+    <div class="wy-sec-head">
+      <span class="wy-no">5</span>
+      <h2>键盘操控轮播<small>← → 翻页 · ↑ ↓ 也能翻 · 课堂没讲过的扩展功能</small></h2>
+    </div>
+    <p class="wy-txt">这次轮到你发现新大陆——用电脑键盘试试：<b>← → 方向键</b>能不能翻页？如果把轮播改成垂直方向，<b>↑ ↓</b> 也能翻页。答案藏在 Swiper 的 <code>keyboard</code> 配置里。</p>
+    <div class="wy-req">
+      <h3>✍️ 任务 5 要求</h3>
+      <p>初始化 <code>#wySw5</code>，实现：<b>① 循环播放</b> <b>② 键盘方向键 ← → 控制翻页</b>（<code>keyboard: { enabled: true }</code>）<b>③ 圆点分页器</b> <b>④ 箭头导航</b>。</p>
+      <span class="wy-star">⭐ 验证标准：点击轮播区域获得焦点，按 ← → 能翻页就是成功</span>
+      <p style="margin-top:6px;color:#8a6e4a;font-size:13px">💡 进阶：试试把 Swiper 改成 <code>direction: 'vertical'</code>，↑ ↓ 也能翻页！</p>
+    </div>
+    <div class="wy-demo">
+      <span class="wy-demo-tag">🎛️ 演示五 · 键盘方向键 ← → 翻页（点一下轮播获得焦点再按键）</span>
+      <div class="wy-swiper">
+        <div class="swiper" id="wySw5" tabindex="0" style="outline:none">
+          <div class="swiper-wrapper">
+            <div class="swiper-slide"><img src="swiper-imgs/tiangong_1.jpg" alt="天宫空间站"><div class="wy-cap"><h3>天宫空间站</h3><p>按 ← → 翻页试试（先点一下轮播区域）</p></div></div>
+            <div class="swiper-slide"><img src="swiper-imgs/fuxing_1.jpg" alt="复兴号动车组"><div class="wy-cap"><h3>复兴号动车组</h3><p>← 上一张 / → 下一张</p></div></div>
+            <div class="swiper-slide"><img src="swiper-imgs/c919_1.jpg" alt="C919大飞机"><div class="wy-cap"><h3>C919 大飞机</h3><p>键盘控制是 Swiper 隐藏彩蛋</p></div></div>
+            <div class="swiper-slide"><img src="swiper-imgs/fendouzhe_1.jpg" alt="奋斗者号"><div class="wy-cap"><h3>奋斗者号</h3><p>vertical 模式下 ↑ ↓ 也能翻</p></div></div>
+            <div class="swiper-slide"><img src="swiper-imgs/fast_1.jpg" alt="中国天眼"><div class="wy-cap"><h3>中国天眼 FAST</h3><p>快按 → 看看能翻多快</p></div></div>
+          </div>
+          <div class="swiper-pagination" id="wyPag5"></div>
+          <div class="swiper-button-prev" id="wyPrev5"></div>
+          <div class="swiper-button-next" id="wyNext5"></div>
         </div>
       </div>
     </div>
@@ -278,17 +311,30 @@ var swiper = new Swiper("#wySw3", {
   // ── 任务 4：初始化 #wySw4，循环 + 3.2 秒自动播放 + 圆点 + 初始 effect ──
   // TODO: 在这里写你的代码
 var swiper = new Swiper("#wySw4", {
-      slidesPerView: 1,
-      spaceBetween: 30,
       loop: true,
+      autoplay: {
+        delay: 3200,
+        disableOnInteraction: false,
+      },
       pagination: {
         el: "#wyPag4",
         clickable: true,
       },
-      autoplay: {
-        delay: 3200,
+      effect: "creative",
+      creativeEffect: {
+        prev: {
+          shadow: true,
+          translate: ["-85%", 0, -300],
+          rotate: [0, 0, -12],
+          scale: 0.75,
+          opacity: 0.55,
+        },
+        next: {
+          shadow: true,
+          translate: ["105%", 0, 0],
+          scale: 1.15,
+        },
       },
-      effect: "slide",
     });
 
 
@@ -308,7 +354,7 @@ var swiper = new Swiper("#wySw4", {
       swiper.destroy();
 
       // TODO 3：用新 effect 重建实例（把其它配置原样保留）
-      swiper = new Swiper("#wySw4", {
+      var fxConf = {
         slidesPerView: 1,
         spaceBetween: 30,
         loop: true,
@@ -318,10 +364,38 @@ var swiper = new Swiper("#wySw4", {
         },
         autoplay: {
           delay: 3200,
+          disableOnInteraction: false,
         },
         effect: btn.dataset.fx,
-      });
+      };
+      if (btn.dataset.fx === 'creative') {
+        fxConf.creativeEffect = {
+          prev: { shadow: true, translate: ['-85%', 0, -300], rotate: [0, 0, -12], scale: 0.75, opacity: 0.55 },
+          next: { shadow: true, translate: ['105%', 0, 0], scale: 1.15 }
+        };
+      }
+      swiper = new Swiper("#wySw4", fxConf);
     });
+  });
+
+  // ── 任务 5：键盘方向键控制 ← → 翻页 ──
+  // 核心配置：keyboard: { enabled: true }，让 Swiper 响应键盘方向键
+  // horizontal（默认）→ ← → 有效；vertical → ↑ ↓ 有效
+  // 注意：Swiper 容器需要 tabindex="0" 才能获得键盘焦点（已在 HTML 里加好）
+  var swiper5 = new Swiper("#wySw5", {
+    loop: true,
+    keyboard: {
+      enabled: true,           // 开启键盘控制：← 上一张，→ 下一张
+      onlyInViewport: true     // 仅在轮播可见时响应，防止页面滚动误触
+    },
+    pagination: {
+      el: "#wyPag5",
+      clickable: true
+    },
+    navigation: {
+      prevEl: "#wyPrev5",
+      nextEl: "#wyNext5"
+    }
   });
 </script>
 </body>

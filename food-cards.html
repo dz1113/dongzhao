@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>中华美食卡片 · 任务二</title>
+<!--
+  作者：董昭
+  建立时间：2026-11-25
+  使用大模型：DeepSeek-V4.1-Flash
+  功能：中华美食卡片触摸滑动切换，4道菜，边界提示，0.3s过渡动画
+-->
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{background:linear-gradient(160deg,#2d1b1b,#5a1f1f,#8b2942);min-height:100vh;color:#fff;font-family:"PingFang SC","Microsoft YaHei",sans-serif;overflow-x:hidden}
+  body{padding:20px 0 40px}
+
+  /* 页面头部 */
+  .page-head{text-align:center;padding:24px 20px 16px}
+  .page-head h1{font-size:22px;color:#ffd166;letter-spacing:3px}
+  .page-head p{font-size:13px;color:#e8b4b4;margin-top:8px;line-height:2}
+  .page-head .tip{display:inline-block;margin-top:10px;font-size:12px;color:#c9a063;background:rgba(255,209,102,.15);border:1px solid rgba(255,209,102,.3);border-radius:999px;padding:4px 14px}
+
+  /* 卡片舞台 */
+  .stage{position:relative;width:100%;height:480px;margin-top:10px;perspective:1200px}
+
+  /* 卡片容器：用 translateX 整体平移实现滑动切换 */
+  .card-track{
+    position:absolute;top:0;left:0;right:0;bottom:0;
+    display:flex;align-items:center;justify-content:center;
+    transition:transform .3s cubic-bezier(.25,.46,.45,.94);
+    will-change:transform;
+  }
+
+  /* 单张卡片 */
+  .card{
+    flex:none;width:300px;height:420px;
+    background:#fff;border-radius:18px;overflow:hidden;
+    box-shadow:0 12px 32px rgba(0,0,0,.4);
+    transition:transform .35s,opacity .3s;
+    position:relative;
+  }
+  .card .pic{
+    width:100%;height:220px;display:flex;align-items:center;justify-content:center;
+    font-size:72px;
+  }
+  .card .info{padding:20px 22px}
+  .card .info h2{font-size:20px;color:#2d1b1b;margin-bottom:8px;letter-spacing:2px}
+  .card .info .en{font-size:12px;color:#c9a063;letter-spacing:1px;margin-bottom:10px}
+  .card .info p{font-size:13px;color:#5a3a3a;line-height:1.9}
+  .card .info .tag-row{margin-top:14px;display:flex;gap:6px;flex-wrap:wrap}
+  .card .info .tag-row span{font-size:11px;color:#c0392b;background:#fdecea;border-radius:999px;padding:3px 10px}
+
+  /* 非当前卡片的视觉样式 */
+  .card:not(.current){opacity:.5;transform:scale(.88)}
+  .card.prev{transform:translateX(-30%) scale(.82);opacity:.4}
+  .card.next{transform:translateX(30%) scale(.82);opacity:.4}
+
+  /* 底部指示器 */
+  .dots{display:flex;justify-content:center;gap:10px;margin-top:18px}
+  .dots span{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.35);transition:all .3s}
+  .dots span.active{background:#ffd166;width:24px;border-radius:5px}
+
+  /* 左右按钮 */
+  .nav-btns{position:absolute;top:50%;transform:translateY(-50%);left:0;right:0;pointer-events:none;display:flex;justify-content:space-between;padding:0 12px}
+  .nav-btns button{
+    pointer-events:auto;width:42px;height:42px;border-radius:50%;
+    background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.35);
+    color:#fff;font-size:18px;cursor:pointer;backdrop-filter:blur(4px);
+    transition:all .2s;
+  }
+  .nav-btns button:active{background:rgba(255,209,102,.3);transform:scale(.9)}
+
+  /* 边界提示 Toast */
+  .toast{
+    position:fixed;top:40%;left:50%;transform:translate(-50%,-50%) scale(.8);
+    background:rgba(45,27,27,.95);color:#ffd166;font-size:14px;letter-spacing:2px;
+    padding:14px 28px;border-radius:12px;border:1px solid rgba(255,209,102,.4);
+    opacity:0;pointer-events:none;transition:all .3s;z-index:100;
+  }
+  .toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+
+  /* 任务说明 */
+  .rule{margin:20px 16px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:14px 18px;font-size:13px;line-height:2;color:#e8b4b4}
+  .rule b{color:#ffd166}
+  .rule code{background:rgba(255,209,102,.15);color:#ffd166;padding:1px 6px;border-radius:4px;font-size:12px}
+
+  /* 进度条：当前 / 总数 */
+  .counter{text-align:center;font-size:14px;color:#ffd166;margin-top:12px;letter-spacing:1px}
+  .counter b{font-size:20px}
+</style>
+</head>
+<body>
+
+<div class="page-head">
+  <h1>🍜 中华美食卡片</h1>
+  <p>任务二：触摸滑动切换卡片，滑到第一张/最后一张会弹出提示<br>用手指在卡片上 <b>← → 滑动</b>，或点左右按钮</p>
+  <span class="tip">提示：第一张往左滑会有彩蛋</span>
+</div>
+
+<!-- 卡片舞台 -->
+<div class="stage" id="stage">
+  <div class="card-track" id="track">
+    <!-- JS 动态渲染 4 张卡片 -->
+  </div>
+  <div class="nav-btns">
+    <button id="btnPrev">‹</button>
+    <button id="btnNext">›</button>
+  </div>
+</div>
+
+<!-- 指示器 -->
+<div class="dots" id="dots"></div>
+
+<!-- 当前 / 总数 -->
+<div class="counter"><b id="cur">1</b> / <span id="total">4</span></div>
+
+<!-- 边界提示 Toast -->
+<div class="toast" id="toast">已经是第一张啦 🙈</div>
+
+<!-- 任务说明 -->
+<div class="rule">
+  <b>任务二 · 触摸滑动卡片切换</b><br>
+  ① 4 道中华美食卡片，用手指触摸滑动切换上一道 / 下一道<br>
+  ② 切换带 <code>.3s</code> 过渡动画（<code>transition: transform .3s</code>）<br>
+  ③ 滑到<b>第一张再往左滑</b>，弹出"已经是第一张啦 🙈"提示<br>
+  ④ 滑到<b>最后一张再往右滑</b>，弹出"最后一道就是压轴菜啦 👨‍🍳"提示<br>
+  <b>💡 核心知识点</b>：<code>touchstart</code> 记录起点 → <code>touchmove</code> 计算位移实时平移卡片 → <code>touchend</code> 判定方向和边界
+</div>
+
+<script>
+  // ── 数据：4 道中华美食 ──
+  const foods = [
+    { name: '北京烤鸭', en: 'Peking Duck', emoji: '🦆', color: '#e74c3c', desc: '果木炭火烤制，皮脆肉嫩，配甜面酱、黄瓜丝、葱丝卷薄饼，京菜之王。', tags: ['京菜','招牌','宴客'] },
+    { name: '麻婆豆腐', en: 'Mapo Tofu', emoji: '🌶️', color: '#c0392b', desc: '麻辣鲜香烫嫩，牛肉末与嫩豆腐在花椒辣椒的红油中翻滚，下饭神器。', tags: ['川菜','辣','下饭'] },
+    { name: '小笼包', en: 'Xiao Long Bao', emoji: '🥟', color: '#e67e22', desc: '薄皮大馅十八个褶，汤汁鲜醇，咬一口满嘴飘香，上海早点之王。', tags: ['沪菜','点心','老字号'] },
+    { name: '东坡肉', en: 'Dongpo Pork', emoji: '🍖', color: '#8e44ad', desc: '苏式红烧肉，肥而不腻入口即化，相传苏东坡所创，浙菜经典。', tags: ['浙菜','名菜','传统'] },
+  ];
+
+  const track = document.getElementById('track');
+  const dotsEl = document.getElementById('dots');
+  const toast = document.getElementById('toast');
+  const curEl = document.getElementById('cur');
+  const totalEl = document.getElementById('total');
+  const btnPrev = document.getElementById('btnPrev');
+  const btnNext = document.getElementById('btnNext');
+
+  let current = 0;
+  let startX = 0, startY = 0;
+  let isDragging = false;
+  let dragOffset = 0;
+  const CARD_W = 300;
+  const GAP = 30;
+  const STEP = CARD_W + GAP;
+
+  // ── 渲染卡片和指示器 ──
+  // 根据 foods 数组动态生成 DOM，每张卡片含 emoji 图标、菜名、英文名、描述和标签
+  function render() {
+    track.innerHTML = foods.map((f, i) => `
+      <div class="card ${i === current ? 'current' : ''}" style="background:linear-gradient(180deg,#fff 0%,${f.color}22 100%)">
+        <div class="pic" style="background:${f.color}15">${f.emoji}</div>
+        <div class="info">
+          <h2>${f.name}</h2>
+          <div class="en">${f.en}</div>
+          <p>${f.desc}</p>
+          <div class="tag-row">${f.tags.map(t => `<span>${t}</span>`).join('')}</div>
+        </div>
+      </div>
+    `).join('');
+    dotsEl.innerHTML = foods.map((_, i) => `<span class="${i === current ? 'active' : ''}"></span>`).join('');
+    totalEl.textContent = foods.length;
+    updateCounter();
+    updatePrevNextClass();
+  }
+
+  // ── 更新当前/总数显示 ──
+  // 把 current+1 写入 counter，因为 current 是 0 基的，而用户看到是 1 基
+  function updateCounter() { curEl.textContent = current + 1; }
+
+  // ── 给前后相邻卡片加 prev/next 类实现透视缩放 ──
+  // 通过 classList 切换，非当前卡片自动缩放到 88%，前一张更靠左、后一张更靠右
+  function updatePrevNextClass() {
+    document.querySelectorAll('.card').forEach((card, i) => {
+      card.classList.remove('current', 'prev', 'next');
+      if (i === current) card.classList.add('current');
+      else if (i === current - 1) card.classList.add('prev');
+      else if (i === current + 1) card.classList.add('next');
+    });
+  }
+
+  // ── 切换卡片（带动画） ──
+  // direction=1 下一张，direction=-1 上一张；更新 current、过渡动画、指示器、计数
+  function go(dir) {
+    const target = current + dir;
+    if (target < 0) { showToast('已经是第一张啦 🙈'); return; }
+    if (target >= foods.length) { showToast('最后一道就是压轴菜啦 👨‍🍳'); return; }
+    current = target;
+    applyTransform();
+    render();
+  }
+
+  // ── 应用 transform 平移到当前卡片 ──
+  // track 的 translateX = -current * 步长，让 current 卡片居中对齐
+  function applyTransform() {
+    track.style.transition = 'transform .3s cubic-bezier(.25,.46,.45,.94)';
+    track.style.transform = `translateX(${-current * STEP}px)`;
+  }
+
+  // ── 显示边界提示 Toast ──
+  // 改文字 → 加 .show 类让淡入上移动画生效 → 1.2s 后移除
+  let toastTimer = null;
+  function showToast(text) {
+    toast.textContent = text;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 1200);
+  }
+
+  // ── 触摸事件：touchstart 记录起点 ──
+  // 按下瞬间记录手指坐标，开启拖拽状态，关闭过渡动画让手指跟着走
+  track.addEventListener('touchstart', (e) => {
+    const t = e.touches[0];
+    startX = t.clientX; startY = t.clientY;
+    isDragging = true;
+    dragOffset = 0;
+    track.style.transition = 'none';
+  }, { passive: true });
+
+  // ── touchmove：实时跟随手指平移 ──
+  // 计算 dx = 当前 X - 起点 X，叠加到基础 transform 上，越界时缩小阻尼效果
+  track.addEventListener('touchmove', (e) => {
+    if (!isDragging) return;
+    const t = e.touches[0];
+    const dx = t.clientX - startX;
+    const base = -current * STEP;
+    // 阻尼：越往左（上一张方向）但 current=0 时位移变小，越界回弹感
+    const damp = (current === 0 && dx > 0) || (current === foods.length - 1 && dx < 0) ? 0.35 : 1;
+    dragOffset = dx * damp;
+    track.style.transform = `translateX(${base + dragOffset}px)`;
+  }, { passive: true });
+
+  // ── touchend：判定滑动方向和距离 ──
+  // 位移 > 50px 且移动是水平的 → 切卡；否则回弹原位；边界时弹 Toast
+  track.addEventListener('touchend', () => {
+    if (!isDragging) return;
+    isDragging = false;
+    const dist = dragOffset;
+    track.style.transition = 'transform .3s cubic-bezier(.25,.46,.45,.94)';
+
+    if (Math.abs(dist) > 50) {
+      // 向左滑（手指向左拖，dist 为负）→ 下一张
+      if (dist < 0) { go(1); } else { go(-1); }
+    } else {
+      // 位移不够 → 回弹
+      applyTransform();
+    }
+  });
+
+  // ── 鼠标事件：桌面端也能滑 ──
+  // mousedown 记录起点、mousemove 跟随、mouseup 判定方向，逻辑和 touch 版完全对称
+  let mouseStartX = 0, mouseDragging = false;
+  track.addEventListener('mousedown', (e) => {
+    mouseStartX = e.clientX; mouseDragging = true;
+    dragOffset = 0; track.style.transition = 'none';
+  });
+  document.addEventListener('mousemove', (e) => {
+    if (!mouseDragging) return;
+    const dx = e.clientX - mouseStartX;
+    const base = -current * STEP;
+    const damp = (current === 0 && dx > 0) || (current === foods.length - 1 && dx < 0) ? 0.35 : 1;
+    dragOffset = dx * damp;
+    track.style.transform = `translateX(${base + dragOffset}px)`;
+  });
+  document.addEventListener('mouseup', () => {
+    if (!mouseDragging) return;
+    mouseDragging = false;
+    const dist = dragOffset;
+    track.style.transition = 'transform .3s cubic-bezier(.25,.46,.45,.94)';
+    if (Math.abs(dist) > 50) {
+      if (dist < 0) { go(1); } else { go(-1); }
+    } else {
+      applyTransform();
+    }
+  });
+
+  // ── 按钮：点击切卡 ──
+  // 上一张按钮 → go(-1)，下一张按钮 → go(1)，边界判断已在 go 函数内处理
+  btnPrev.addEventListener('click', () => go(-1));
+  btnNext.addEventListener('click', () => go(1));
+
+  // ── 键盘：← → 方向键也能切 ──
+  // ← 上一张 → go(-1)，→ 下一张 → go(1)，和按钮、触摸共享 go 函数
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowLeft') go(-1);
+    else if (e.key === 'ArrowRight') go(1);
+  });
+
+  // ── 防止卡片被选中文本 ──
+  // user-select:none 虽然已在 CSS 里加了，桌面端鼠标拖拽可能还是会选中文字，这里兜底
+  track.addEventListener('dragstart', (e) => e.preventDefault());
+
+  render();
+  applyTransform();
+</script>
+</body>
+</html>

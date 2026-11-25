@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>触摸事件探究 · 课堂任务</title>
+<!--
+  作者：董昭
+  建立时间：2026-11-25
+  使用大模型：DeepSeek-V4.1-Flash
+  功能：触摸事件探究任务页，含探针区实时日志、5种操作事件记录、思考题
+-->
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{background:#1a1a2e;color:#eee;font-family:"PingFang SC","Microsoft YaHei",sans-serif}
+  body{padding:16px 16px 40px;min-height:100vh}
+
+  .task-head{text-align:center;padding:20px 10px 10px}
+  .task-head h1{font-size:20px;color:#ffd166;letter-spacing:2px}
+  .task-head p{font-size:13px;color:#9aa;line-height:2;margin-top:8px}
+  .task-head .badge{
+    display:inline-block;margin-top:8px;font-size:12px;color:#fff;
+    background:#e8890c;border-radius:999px;padding:4px 14px;
+  }
+
+  /* 章节卡片 */
+  .sec{
+    background:#22223a;border-radius:14px;padding:18px;margin:14px 0;
+    border:1px solid #333355;
+  }
+  .sec h2{
+    font-size:16px;color:#ffd166;margin-bottom:12px;
+    border-left:4px solid #e8890c;padding-left:10px;
+  }
+  .sec p,.sec li{font-size:13.5px;line-height:2;color:#d4d4e8}
+  .sec ul{padding-left:20px}
+  .sec code{background:#333355;color:#ffd166;padding:1px 6px;border-radius:4px;font-size:12px}
+
+  /* 第 3 节探针区（核心） */
+  .probe-wrap{margin-top:10px}
+  .probe{
+    position:relative;width:100%;height:220px;
+    background:linear-gradient(135deg,#6b3fa0,#e8890c,#ff6b6b);
+    border-radius:14px;overflow:hidden;cursor:pointer;
+    touch-action:none; /* 禁用默认滚动，让触摸事件全部交给 JS */
+    display:flex;align-items:center;justify-content:center;
+    color:#fff;font-size:18px;font-weight:bold;letter-spacing:3px;
+    user-select:none;
+  }
+  .probe:active{filter:brightness(0.85)}
+  .probe .inner{
+    position:absolute;inset:10px;border:2px dashed rgba(255,255,255,.5);
+    border-radius:10px;display:flex;align-items:center;justify-content:center;
+  }
+  .probe .hint{font-size:13px;font-weight:normal;letter-spacing:1px;opacity:.8;text-align:center}
+
+  /* 实时日志浮层 */
+  .probe .overlay{
+    position:absolute;top:8px;left:8px;right:8px;font-size:12px;
+    color:#fff;background:rgba(0,0,0,.45);padding:6px 10px;
+    border-radius:6px;font-family:Consolas,monospace;pointer-events:none;
+    min-height:20px;
+  }
+
+  /* 事件顺序记录表 */
+  .table-wrap{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{border:1px solid #333355;padding:8px 10px;text-align:left}
+  th{background:#2a2a4a;color:#ffd166;font-weight:normal;font-size:12px}
+  td{color:#d4d4e8;font-family:Consolas,monospace;font-size:12px}
+  td.op{color:#ffd166;font-family:inherit}
+  td.empty{color:#666;font-family:inherit;font-style:italic}
+
+  /* 操作按钮 */
+  .btns{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+  .btns button{
+    flex:1;min-width:100px;padding:8px 10px;font-size:13px;
+    background:#333355;color:#d4d4e8;border:1px solid #444466;
+    border-radius:8px;cursor:pointer;font-family:inherit;
+  }
+  .btns button:hover{background:#444466}
+  .btns button.primary{background:#e8890c;border-color:#e8890c;color:#fff}
+
+  /* 图例颜色 */
+  .evt-touchstart{color:#4ade80}
+  .evt-touchmove{color:#60a5fa}
+  .evt-touchend{color:#f97316}
+  .evt-touchcancel{color:#ef4444}
+  .evt-click{color:#a78bfa}
+  .evt-longpress{color:#ffd166}
+  .evt-swipe{color:#22d3ee}
+  .evt-drag{color:#fb923c}
+  .evt-pinch{color:#f472b6}
+</style>
+</head>
+<body>
+
+<div class="task-head">
+  <h1>🎯 触摸事件探究 · 任务一</h1>
+  <p>用手机或 Chrome DevTools 设备模式打开本页，<br>对下方「探针区」依次做 5 种操作，观察事件触发顺序</p>
+  <span class="badge">⚠️ 请在 DevTools 中点击 手机图标 进入设备模式</span>
+</div>
+
+<!-- 第 1 节：触摸事件知识 -->
+<div class="sec">
+  <h2>① 先认识：触摸事件四件套</h2>
+  <ul>
+    <li><code>touchstart</code> — 手指刚碰到屏幕的瞬间（对应鼠标 mousedown）</li>
+    <li><code>touchmove</code> — 手指在屏幕上滑动（会连续触发很多次，对应 mousemove）</li>
+    <li><code>touchend</code> — 手指抬起离开屏幕（对应 mouseup）</li>
+    <li><code>touchcancel</code> — 系统中断触摸（如来电、切后台，很少见）</li>
+  </ul>
+  <p style="margin-top:8px">📌 <b>关键</b>：所有触摸操作都由这四个基础事件组合而成，没有"长按""滑动"这种原生事件——它们都是我们自己通过时间和位移算出来的。</p>
+</div>
+
+<!-- 第 2 节：5 种操作说明 -->
+<div class="sec">
+  <h2>② 要做的 5 种操作</h2>
+  <ul>
+    <li><b>单击</b>：手指轻碰探针区立刻抬起</li>
+    <li><b>向上拖动</b>：按住手指慢慢向上移一段再抬起</li>
+    <li><b>向左快速滑</b>：手指在屏幕上快速向左"挥"一下</li>
+    <li><b>双指触摸（可选）</b>：两指同时按在探针区</li>
+    <li><b>长按后抬起</b>：手指按住不动约 1 秒再抬起</li>
+  </ul>
+  <p style="margin-top:8px">💡 每次操作前点击下方「清空记录」按钮，方便看清单次的完整事件序列。</p>
+</div>
+
+<!-- 第 3 节：探针区（核心） -->
+<div class="sec">
+  <h2>③ 探针区 ← 对这里做操作</h2>
+  <p style="margin-bottom:10px">实时事件日志会叠加显示在探针区顶部，每发生一个事件就追加一行。</p>
+
+  <div class="probe-wrap">
+    <div class="probe" id="probe">
+      <div class="inner">
+        <span class="hint">👆 在这里摸一摸<br>试试 5 种操作</span>
+      </div>
+      <div class="overlay" id="overlay">等待触摸…</div>
+    </div>
+  </div>
+
+  <div class="btns">
+    <button class="primary" id="btnClear">🗑️ 清空记录</button>
+    <button id="btnExport">📋 复制事件表</button>
+  </div>
+</div>
+
+<!-- 第 4 节：事件顺序记录表 -->
+<div class="sec">
+  <h2>④ 事件触发顺序记录表</h2>
+  <p style="margin-bottom:10px">每操作完一种，把探针区日志里的事件触发顺序填进对应行。</p>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>操作</th><th>事件触发顺序（按先后填写）</th></tr>
+      </thead>
+      <tbody id="tbody">
+        <tr><td class="op">① 单击</td><td class="empty">待填写</td></tr>
+        <tr><td class="op">② 向上拖动</td><td class="empty">待填写</td></tr>
+        <tr><td class="op">③ 向左快速滑</td><td class="empty">待填写</td></tr>
+        <tr><td class="op">④ 双指触摸</td><td class="empty">待填写</td></tr>
+        <tr><td class="op">⑤ 长按后抬起</td><td class="empty">待填写</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- 第 5 节：思考题 -->
+<div class="sec">
+  <h2>⑤ 思考题</h2>
+  <ul>
+    <li>单击时，<code>touchend</code> 和紧接着的 <code>click</code> 是什么关系？为什么有时 click 不会触发？</li>
+    <li>快速滑动和慢慢拖动，事件序列有什么本质不同？（提示：<code>touchmove</code> 的数量和位移）</li>
+    <li>长按是怎么"算"出来的？需要监听什么来防止"按住但手指稍微动了一点"也触发长按？</li>
+    <li>双指触摸时，<code>touches.length</code> 会有什么变化？</li>
+  </ul>
+</div>
+
+<script>
+  const probe = document.getElementById('probe');
+  const overlay = document.getElementById('overlay');
+  const tbody = document.getElementById('tbody');
+  const btnClear = document.getElementById('btnClear');
+
+  let log = [];          // 单次操作事件序列
+  let allLogs = {};      // 5 种操作的最终序列
+  let startTime = 0;
+  let startX = 0, startY = 0;
+  let lastMoveX = 0, lastMoveY = 0;
+  let moveCount = 0;
+  let longPressTimer = null;
+  let longPressFired = false;
+  let actionTag = '';    // 当前操作分类
+
+  // 事件名 → CSS 类名（颜色）
+  const evtClass = {
+    touchstart: 'evt-touchstart',
+    touchmove:  'evt-touchmove',
+    touchend:   'evt-touchend',
+    touchcancel:'evt-touchcancel',
+    click:      'evt-click',
+    longpress:  'evt-longpress',
+    swipe:      'evt-swipe',
+    drag:       'evt-drag',
+    pinch:      'evt-pinch',
+  };
+
+  // 向实时日志追加一条事件名和附加信息，自动更新探针区顶部浮层显示
+  function addLog(name, extra) {
+    const cls = evtClass[name] || '';
+    const tag = `<span class="${cls}">${name}</span>`;
+    const info = extra ? ` (${extra})` : '';
+    log.push({ name, extra });
+    overlay.innerHTML = log.map(l => {
+      const c = evtClass[l.name] || '';
+      return `<span class="${c}">${l.name}</span>${l.extra?'<span style="color:#888">('+l.extra+')</span>':''}`;
+    }).join(' → ') + info;
+    overlay.scrollLeft = overlay.scrollWidth;
+  }
+
+  // ── 触摸事件四件套 ──
+  // touchstart：初始化计时变量、记录起点坐标、启动长按定时器、检测双指触摸
+  probe.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    const t = e.touches[0];
+    startTime = Date.now();
+    startX = lastMoveX = t.clientX;
+    startY = lastMoveY = t.clientY;
+    moveCount = 0;
+    longPressFired = false;
+    actionTag = '';
+
+    addLog('touchstart', `touches=${e.touches.length}`);
+
+    // 双指检测
+    if (e.touches.length >= 2) {
+      addLog('pinch', '双指触摸');
+    }
+
+    // 长按定时器（500ms 内没 move 就算长按）
+    longPressTimer = setTimeout(() => {
+      if (moveCount === 0 && !longPressFired) {
+        longPressFired = true;
+        addLog('longpress', '长按触发');
+      }
+    }, 600);
+  }, { passive: false });
+
+  // touchmove：累计位移、首帧取消长按定时器、每 5 帧或位移>15px 才输出日志防刷屏
+  probe.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    const t = e.touches[0];
+    const dx = t.clientX - lastMoveX;
+    const dy = t.clientY - lastMoveY;
+    const totalDx = t.clientX - startX;
+    const totalDy = t.clientY - startY;
+    lastMoveX = t.clientX; lastMoveY = t.clientY;
+
+    // 长按期间手指动了 → 取消长按
+    if (moveCount === 0 && longPressTimer) {
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
+    }
+
+    moveCount++;
+    // 只在位移较大时才输出 move（太密集会刷屏）
+    if (moveCount === 1 || Math.abs(dx) > 15 || Math.abs(dy) > 15 || moveCount % 5 === 0) {
+      addLog('touchmove', `dx=${Math.round(totalDx)} dy=${Math.round(totalDy)}`);
+    } else {
+      // 静默累计，不刷屏
+      log.push({ name: 'touchmove', extra: `dx=${Math.round(totalDx)} dy=${Math.round(totalDy)}` });
+    }
+  }, { passive: false });
+
+  // touchend：清除长按定时器、按位移+时间判定是单击/快速滑/拖动/长按、写入对应表格行
+  probe.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    clearTimeout(longPressTimer);
+    longPressTimer = null;
+
+    const elapsed = Date.now() - startTime;
+    const totalDx = lastMoveX - startX;
+    const totalDy = lastMoveY - startY;
+    const dist = Math.sqrt(totalDx * totalDx + totalDy * totalDy);
+
+    addLog('touchend', `停留${elapsed}ms 位移${Math.round(dist)}px`);
+
+    // 分类：单击 / 滑动 / 拖动 / 长按
+    if (longPressFired) {
+      actionTag = '长按后抬起';
+    } else if (elapsed < 300 && dist < 10) {
+      addLog('click', '单击判定');
+      actionTag = '单击';
+    } else if (dist > 50 && elapsed < 400) {
+      // 快速滑动
+      let dir = '';
+      if (Math.abs(totalDx) > Math.abs(totalDy)) dir = totalDx > 0 ? '向右' : '向左';
+      else dir = totalDy > 0 ? '向下' : '向上';
+      addLog('swipe', `${dir}快速滑`);
+      actionTag = dir + '快速滑';
+    } else if (dist > 15) {
+      let dir = '';
+      if (Math.abs(totalDx) > Math.abs(totalDy)) dir = totalDx > 0 ? '向右' : '向左';
+      else dir = totalDy > 0 ? '向下' : '向上';
+      addLog('drag', `${dir}拖动`);
+      actionTag = dir + '拖动';
+    } else {
+      actionTag = '短暂触摸';
+    }
+
+    // 如果是双指开头
+    if (allLogs['双指触摸'] === undefined && e.changedTouches.length > 0) {
+      // touchstart 已经记录了 pinch，但 touchend 不会再带第二指
+    }
+
+    // 把完整序列写入表格对应行
+    saveToTable(actionTag);
+  }, { passive: false });
+
+  // touchcancel：系统强制中断时记录日志（如来电、切后台），兜底异常收尾
+  probe.addEventListener('touchcancel', (e) => {
+    addLog('touchcancel', '系统中断');
+  }, { passive: false });
+
+  // 鼠标模拟（DevTools 设备模式会走 touch，但桌面也能测个大概）
+  probe.addEventListener('click', () => {
+    // 如果已经由 touchstart 路径处理过就跳过
+    if (log.length > 0) return;
+    addLog('click', '鼠标单击');
+    saveToTable('单击');
+  });
+
+  // 根据操作分类把事件序列写入表格对应行，同时支持方向归一化（向右拖动 → 向上拖动行）
+  function saveToTable(tag) {
+    if (!tag) return;
+    // 归一化：把方向 + 滑动 → 对应到表格行
+    let rowKey = '';
+    if (tag.includes('单击')) rowKey = '单击';
+    else if (tag.includes('向上拖动')) rowKey = '向上拖动';
+    else if (tag.includes('向左快速滑')) rowKey = '向左快速滑';
+    else if (tag.includes('快速滑')) rowKey = '向左快速滑'; // 其它方向快速滑也填这行
+    else if (tag.includes('拖动')) rowKey = '向上拖动';    // 其它方向拖动也填这行
+    else if (tag.includes('长按')) rowKey = '长按后抬起';
+    else if (log.some(l => l.name === 'pinch')) rowKey = '双指触摸';
+
+    if (!rowKey) return;
+
+    // 生成事件序列字符串
+    const seq = log.map(l => l.name).join(' → ');
+    allLogs[rowKey] = seq;
+
+    // 更新表格
+    const rows = tbody.querySelectorAll('tr');
+    rows.forEach(tr => {
+      const opCell = tr.querySelector('td.op');
+      if (opCell && opCell.textContent.trim().includes(rowKey)) {
+        const dataCell = tr.querySelector('td:not(.op)');
+        if (dataCell) {
+          dataCell.className = '';
+          dataCell.innerHTML = seq + `<br><span style="color:#888;font-size:11px">最近一次操作</span>`;
+        }
+      }
+    });
+  }
+
+  // ── 清空 / 复制 ──
+  // 清空日志：重置事件数组和探针区顶部浮层文字
+  btnClear.addEventListener('click', () => {
+    log = [];
+    overlay.textContent = '等待触摸…';
+  });
+
+  // 复制事件表到剪贴板：遍历表格生成 TSV 文本供学生粘贴到作业
+  document.getElementById('btnExport').addEventListener('click', () => {
+    let text = '操作\t事件触发顺序\n';
+    tbody.querySelectorAll('tr').forEach(tr => {
+      const cells = tr.querySelectorAll('td');
+      text += cells[0].textContent.trim() + '\t' + cells[1].textContent.trim() + '\n';
+    });
+    navigator.clipboard.writeText(text).then(() => {
+      btnExport.textContent = '✅ 已复制到剪贴板';
+      setTimeout(() => btnExport.textContent = '📋 复制事件表', 1500);
+    });
+  });
+
+  // 阻止探针区触摸时整页滚动，让触摸事件全部交给 JS 处理
+  document.addEventListener('touchmove', (e) => {
+    if (e.target === probe) e.preventDefault();
+  }, { passive: false });
+</script>
+</body>
+</html>

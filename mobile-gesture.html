@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>移动端美食卡片 · dz_ 规范版</title>
+<!--
+  作者：董昭
+  学号：24002120409
+  建立时间：2026-11-25
+  使用大模型：DeepSeek-V4.1-Flash
+  功能：移动端美食卡片触摸滑动切换，类名/id/变量均以 dz_ 开头
+-->
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{background:#f5f5f7;min-height:100vh;color:#222;font-family:"PingFang SC","Microsoft YaHei",sans-serif}
+body{padding-top:60px;padding-bottom:40px}
+
+/* ── 顶部标题栏 ── */
+.dz_head{text-align:center;margin-bottom:20px}
+.dz_head h1{font-size:20px;color:#1d5bbf;letter-spacing:2px}
+.dz_head p{font-size:12px;color:#888;margin-top:6px}
+
+/* ── 卡片舞台：touch-action: pan-y 允许纵向滚动，横向滑动交给 JS ── */
+.dz_stage{
+  position:relative;width:320px;height:440px;margin:0 auto;
+  touch-action:pan-y; /* ⭐ 关键：允许纵向滚动，横向滑动由 JS 接管 */
+  user-select:none;
+}
+
+/* ── 卡片容器：用 translateX 平移切换，0.3s 过渡动画 ── */
+.dz_track{
+  position:absolute;top:0;left:0;width:2400px;height:100%;
+  display:flex;gap:24px;padding:0 18px;
+  /* ⭐ 切换动画：transform 0.3s 缓入缓出 */
+  transition:transform .3s cubic-bezier(.4,0,.2,1);
+  will-change:transform;
+}
+
+/* ── 单张卡片：渐变背景 + 菜名 + 简介 ── */
+.dz_card{
+  flex:none;width:302px;height:100%;
+  border-radius:20px;overflow:hidden;
+  box-shadow:0 10px 28px rgba(0,0,0,.15);
+  display:flex;flex-direction:column;
+  color:#fff;
+}
+.dz_card .dz_pic{flex:1;display:flex;align-items:center;justify-content:center;font-size:80px}
+.dz_card .dz_info{padding:18px 22px 22px}
+.dz_card .dz_info h2{font-size:22px;margin-bottom:6px;letter-spacing:2px}
+.dz_card .dz_info .dz_en{font-size:12px;opacity:.85;letter-spacing:1px;margin-bottom:10px}
+.dz_card .dz_info .dz_desc{font-size:13px;line-height:1.9;opacity:.95}
+
+/* ── 底部计数器 ── */
+.dz_counter{text-align:center;margin-top:22px;font-size:14px;color:#555}
+.dz_counter b{font-size:22px;color:#1d5bbf;font-weight:bold}
+
+/* ── 指示器圆点 ── */
+.dz_dots{display:flex;justify-content:center;gap:8px;margin-top:10px}
+.dz_dots span{width:8px;height:8px;border-radius:50%;background:#ccc;transition:all .3s}
+.dz_dots span.active{background:#1d5bbf;width:20px;border-radius:4px}
+
+/* ── 边界提示 Toast ── */
+.dz_toast{
+  position:fixed;top:45%;left:50%;transform:translate(-50%,-50%) scale(.85);
+  background:rgba(0,0,0,.82);color:#fff;font-size:14px;
+  padding:12px 26px;border-radius:10px;letter-spacing:1px;
+  opacity:0;pointer-events:none;transition:all .28s;z-index:100;
+}
+.dz_toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+
+/* ── 操作说明 ── */
+.dz_rule{margin:26px 16px;background:#fff;border:1px solid #e8ecf5;border-radius:12px;padding:14px 18px;font-size:12.5px;line-height:2;color:#555}
+.dz_rule b{color:#1d5bbf}
+.dz_rule code{background:#eef2ff;color:#1d5bbf;padding:1px 5px;border-radius:4px;font-size:11.5px}
+</style>
+</head>
+<body>
+
+<div class="dz_head">
+  <h1>🍜 中华美食卡片</h1>
+  <p>姓名：董昭　学号：24002120409　任务二</p>
+</div>
+
+<!-- 卡片舞台 -->
+<div class="dz_stage" id="dz_stage">
+  <div class="dz_track" id="dz_track">
+    <!-- JS 动态渲染 -->
+  </div>
+</div>
+
+<!-- 底部计数 + 指示器 -->
+<div class="dz_counter">第 <b id="dz_cur">1</b> / <span id="dz_total">4</span> 张</div>
+<div class="dz_dots" id="dz_dots"></div>
+
+<!-- 边界提示 -->
+<div class="dz_toast" id="dz_toast">已经是第一张啦 🙈</div>
+
+<!-- 任务说明 -->
+<div class="dz_rule">
+  <b>任务二 · 移动端触摸滑动</b><br>
+  ① <code>touchstart</code> 记录起点，<code>touchend</code> 用 <code>changedTouches[0]</code> 计算位移<br>
+  ② 阈值 <code>40px</code>：左滑 → 下一张，右滑 → 上一张<br>
+  ③ 边界时弹 Toast：第一张 / 最后一张不循环<br>
+  ④ <code>touch-action:pan-y</code> 纵向还能滚动页面<br>
+  ⑤ 切换 <code>.3s</code> 过渡 + <code>300ms</code> 冷却防连滑<br>
+  ⑥ 所有命名 <code>dz_</code> 开头
+</div>
+
+<script>
+  // ═══════════════════════════════════════════════════════════
+  //  全部类名 / id / 变量均以 dz_ 开头（任务要求第 6 条）
+  // ═══════════════════════════════════════════════════════════
+
+  // ── 数据：4 道菜 ──
+  const dz_foods = [
+    { dz_name: '北京烤鸭', dz_en: 'Peking Duck', dz_emoji: '🦆', dz_desc: '果木炭火烤制，皮脆肉嫩，京菜之王。', dz_bg: 'linear-gradient(160deg,#e74c3c,#c0392b)' },
+    { dz_name: '麻婆豆腐', dz_en: 'Mapo Tofu', dz_emoji: '🌶️', dz_desc: '麻辣鲜香烫嫩，下饭神器。', dz_bg: 'linear-gradient(160deg,#e67e22,#d35400)' },
+    { dz_name: '小笼包', dz_en: 'Xiao Long Bao', dz_emoji: '🥟', dz_desc: '薄皮大馅十八褶，上海早点之王。', dz_bg: 'linear-gradient(160deg,#f39c12,#e67e22)' },
+    { dz_name: '东坡肉', dz_en: 'Dongpo Pork', dz_emoji: '🍖', dz_desc: '肥而不腻入口即化，浙菜经典。', dz_bg: 'linear-gradient(160deg,#8e44ad,#6c3483)' },
+  ];
+
+  const dz_track = document.getElementById('dz_track');
+  const dz_dots = document.getElementById('dz_dots');
+  const dz_toast = document.getElementById('dz_toast');
+  const dz_cur = document.getElementById('dz_cur');
+  const dz_total = document.getElementById('dz_total');
+
+  let dz_current = 0;          // 当前卡片索引（0 基）
+  let dz_startX = 0;            // touchstart 时的起点 X
+  let dz_cooldown = false;      // ⭐ 冷却锁：防止快速连滑跳两张
+
+  const dz_STEP = 302 + 24;     // 卡片宽 302 + gap 24 = 步长 326
+  const dz_THRESHOLD = 40;      // ⭐ 滑动阈值 40px（任务要求第 2 条）
+
+  // ── 渲染卡片和指示器 ──
+  // 根据 dz_foods 数组生成卡片 DOM，每张卡片独立渐变背景
+  function dz_render() {
+    dz_track.innerHTML = dz_foods.map(f => `
+      <div class="dz_card" style="background:${f.dz_bg}">
+        <div class="dz_pic">${f.dz_emoji}</div>
+        <div class="dz_info">
+          <h2>${f.dz_name}</h2>
+          <div class="dz_en">${f.dz_en}</div>
+          <div class="dz_desc">${f.dz_desc}</div>
+        </div>
+      </div>
+    `).join('');
+    dz_dots.innerHTML = dz_foods.map((_, i) => `<span class="${i === dz_current ? 'active' : ''}"></span>`).join('');
+    dz_total.textContent = dz_foods.length;
+    dz_updateCounter();
+    dz_applyTransform();
+  }
+
+  // ── 更新底部计数器 ──
+  // dz_current 是 0 基，显示时 +1，格式"第 X / 4 张"
+  function dz_updateCounter() { dz_cur.textContent = dz_current + 1; }
+
+  // ── 应用 translateX 到 dz_track ──
+  // transform = -current * 步长，让当前卡片居中；冷却结束后自动解锁 dz_cooldown
+  function dz_applyTransform() {
+    dz_track.style.transform = `translateX(${-dz_current * dz_STEP}px)`;
+    setTimeout(() => { dz_cooldown = false; }, 300); // ⭐ 300ms 冷却防连滑
+  }
+
+  // ── 切换到上一张或下一张 ──
+  // dz_dir=-1 上一张，dz_dir=1 下一张；边界时弹 Toast，不循环
+  function dz_go(dz_dir) {
+    if (dz_cooldown) return;       // 冷却中，忽略快速连滑
+    const dz_target = dz_current + dz_dir;
+    if (dz_target < 0) { dz_showToast('已经是第一张啦 🙈'); return; }
+    if (dz_target >= dz_foods.length) { dz_showToast('最后一张就是压轴菜啦 👨‍🍳'); return; }
+    dz_cooldown = true;
+    dz_current = dz_target;
+    dz_render();
+  }
+
+  // ── 显示边界提示 Toast ──
+  // 改文字 → 加 .show 类触发淡入缩放 → 1.1s 后移除
+  let dz_toastTimer = null;
+  function dz_showToast(dz_text) {
+    dz_toast.textContent = dz_text;
+    dz_toast.classList.add('show');
+    clearTimeout(dz_toastTimer);
+    dz_toastTimer = setTimeout(() => dz_toast.classList.remove('show'), 1100);
+  }
+
+  // ── touchstart：记录起点 X ──
+  // 只存起点坐标，不在此做任何判断；dz_stage 设置了 touch-action:pan-y，纵向滚页不影响横向切换
+  dz_stage.addEventListener('touchstart', (dz_e) => {
+    dz_startX = dz_e.touches[0].clientX;
+  }, { passive: true });
+
+  // ── touchend：用 changedTouches[0] 计算横向位移 ──
+  // ⭐ 任务要求用 changedTouches[0]（不是 touches[0]），阈值 40px
+  dz_stage.addEventListener('touchend', (dz_e) => {
+    const dx = dz_e.changedTouches[0].clientX - dz_startX;
+    if (Math.abs(dx) < dz_THRESHOLD) return; // 位移不够 → 忽略
+    if (dx < 0) dz_go(1);   // 手指向左滑（dx 负）→ 下一张
+    else dz_go(-1);          // 手指向右滑（dx 正）→ 上一张
+  }, { passive: true });
+
+  // ── 初始化 ──
+  dz_render();
+</script>
+</body>
+</html>

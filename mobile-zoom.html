@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>移动端图片查看器 · 任务三</title>
+<!--
+  作者：董昭
+  学号：24002120409
+  建立时间：2026-11-25
+  使用大模型：DeepSeek-V4.1-Flash
+  功能：移动端图片查看器，双指缩放1~4倍、双击切换1x/2x、放大后单指拖动
+-->
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{background:#0d0d14;min-height:100vh;color:#fff;font-family:"PingFang SC","Microsoft YaHei",sans-serif;overflow:hidden}
+
+/* ── 顶部工具栏 ── */
+.dz_bar{position:fixed;top:0;left:0;right:0;z-index:20;background:rgba(13,13,20,.88);backdrop-filter:blur(6px);padding:12px 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.08)}
+.dz_bar h1{font-size:16px;letter-spacing:2px;color:#ffd166}
+.dz_bar .dz_meta{font-size:12px;color:#888}
+
+/* ── 查看器容器 ── */
+/* ⭐ 任务要求 1：overflow:hidden 裁切、touch-action:none 接管触摸、user-select:none 禁选 */
+.dz_viewer{
+  position:fixed;top:48px;left:0;right:0;bottom:0;
+  overflow:hidden;           /* 超出部分裁切 */
+  touch-action:none;         /* 禁止浏览器默认缩放/滚动 */
+  user-select:none;          /* 禁止选中文本 */
+  background:#0d0d14;
+}
+
+/* ── 图片：用 transform 做缩放和平移 ── */
+/* transform-origin: 0 0 让 translate 的原点在图片左上角，计算最简单 */
+.dz_img{
+  position:absolute;top:0;left:0;
+  transform-origin:0 0;
+  will-change:transform;
+  /* ⭐ 双击切换 0.25s 过渡：transform 带 transition */
+  transition:transform .25s cubic-bezier(.4,0,.2,1);
+  pointer-events:none;       /* 图片不拦截事件，事件全落到容器上 */
+}
+
+/* ── 底部缩放指示 ── */
+.dz_hud{position:fixed;bottom:22px;left:0;right:0;text-align:center;z-index:20;pointer-events:none}
+.dz_hud .dz_scale-tag{display:inline-block;background:rgba(0,0,0,.7);color:#ffd166;font-size:13px;padding:6px 18px;border-radius:999px;letter-spacing:2px}
+.dz_hud .dz_scale-bar{display:flex;align-items:center;gap:10px;justify-content:center;margin-top:10px}
+.dz_hud .dz_scale-bar span{font-size:11px;color:#888}
+.dz_hud .dz_scale-bar .dz_bar{width:180px;height:4px;background:rgba(255,255,255,.15);border-radius:2px;position:relative}
+.dz_hud .dz_scale-bar .dz_bar i{position:absolute;left:0;top:-4px;height:12px;width:12px;border-radius:50%;background:#ffd166;transition:left .15s}
+
+/* ── 桌面端提示：请用手机打开 ── */
+.dz_hint{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:30;background:rgba(255,209,102,.1);border:1px solid rgba(255,209,102,.3);color:#ffd166;font-size:14px;padding:14px 28px;border-radius:12px;text-align:center;line-height:2;pointer-events:none;display:none}
+@media (hover:hover) and (pointer:fine){.dz_hint{display:block}}
+
+/* ── 操作说明 ── */
+.dz_help{position:fixed;top:48px;right:10px;background:rgba(0,0,0,.65);color:#d4d4e8;font-size:11.5px;padding:8px 12px;border-radius:8px;line-height:1.8;max-width:180px;z-index:10}
+.dz_help b{color:#ffd166}
+</style>
+</head>
+<body>
+
+<div class="dz_bar">
+  <h1>🔍 图片查看器</h1>
+  <span class="dz_meta">董昭 · 24002120409 · 任务三</span>
+</div>
+
+<!-- 查看器容器 -->
+<div class="dz_viewer" id="dz_viewer">
+  <img class="dz_img" id="dz_img" src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1200&q=80" alt="风景大图" onerror="this.src='https://picsum.photos/1200/1600'">
+</div>
+
+<!-- 操作提示 -->
+<div class="dz_help">
+  <b>👆 单指</b> 拖动（放大后）<br>
+  <b>✌️ 双指</b> 缩放 1x~4x<br>
+  <b>👆👆 双击</b> 1x ⇄ 2x
+</div>
+
+<!-- 桌面端提示 -->
+<div class="dz_hint">📱 双指缩放请用手机打开<br>或 Chrome DevTools 设备模式</div>
+
+<!-- 底部缩放 HUD -->
+<div class="dz_hud">
+  <div class="dz_scale-tag" id="dz_scaleTag">1.0×</div>
+  <div class="dz_scale-bar">
+    <span>1×</span><div class="dz_bar"><i id="dz_thumb"></i></div><span>4×</span>
+  </div>
+</div>
+
+<script>
+  // ═══════════════════════════════════════════════════════════
+  //  全部类名 / id / 变量均以 dz_ 开头
+  // ═══════════════════════════════════════════════════════════
+
+  const dz_viewer = document.getElementById('dz_viewer');
+  const dz_img = document.getElementById('dz_img');
+  const dz_scaleTag = document.getElementById('dz_scaleTag');
+  const dz_thumb = document.getElementById('dz_thumb');
+
+  // ── 图片尺寸（在 load 事件里更新） ──
+  let dz_imgW = 0, dz_imgH = 0;
+
+  // ── 查看器容器尺寸 ──
+  const dz_stage = () => dz_viewer.getBoundingClientRect();
+
+  // ── 核心变换状态 ──
+  let dz_scale = 1;       // 当前缩放倍数（1~4）
+  let dz_tx = 0, dz_ty = 0;  // 当前平移量（translateX/Y）
+
+  // ── 触摸状态 ──
+  let dz_touchCount = 0;   // 当前手指数
+  let dz_prevMid = null;   // 上一帧两指中点坐标（用于 pan 模式下双指也能拖动）
+  let dz_startPanX = 0, dz_startPanY = 0;  // 单指拖动起点（pan 模式）
+  let dz_startTx = 0, dz_startTy = 0;       // 单指拖动时的 tx/ty 快照
+
+  // ── 双击检测 ──
+  let dz_lastTap = 0;                       // 上一次 touchend 时间戳
+
+  // ── 双指缩放起始快照 ──
+  // ⭐ 防止缩放跳变的关键：双指按下瞬间，把当前 midpoint、scale、tx、ty 全部快照下来
+  //    后面每一帧都从快照出发计算，而不是累积增量
+  let dz_pinchStart = null;  // { midX, midY, scale, tx, ty, dist }
+
+  // ── 缩放限制 ──
+  const MIN_SCALE = 1, MAX_SCALE = 4;
+
+  // ── 图片加载完后居中显示 ──
+  dz_img.addEventListener('load', () => {
+    dz_imgW = dz_img.naturalWidth;
+    dz_imgH = dz_img.naturalHeight;
+    dz_fitCenter();
+    dz_apply();
+  });
+
+  // ── fitCenter：让图片以 1x 等比缩放居中放入容器 ──
+  // 计算容器和图片的宽高比，取更小的 scale 保证完全显示
+  function dz_fitCenter() {
+    const s = dz_stage();
+    dz_scale = Math.min(s.width / dz_imgW, s.height / dz_imgH);
+    dz_tx = (s.width - dz_imgW * dz_scale) / 2;
+    dz_ty = (s.height - dz_imgH * dz_scale) / 2;
+    dz_updateHUD();
+  }
+
+  // ── 把 dz_scale / dz_tx / dz_ty 应用到图片 transform ──
+  // transform-origin:0 0 所以 translate 必须先于 scale（CSS 里 translate 在 scale 之前）
+  // transition 控制双击时 0.25s 过渡；双指缩放时我们关掉 transition 让它跟手
+  function dz_apply() {
+    dz_img.style.transform = `translate(${dz_tx}px, ${dz_ty}px) scale(${dz_scale})`;
+    dz_updateHUD();
+  }
+
+  // ── 更新底部缩放指示 ──
+  function dz_updateHUD() {
+    dz_scaleTag.textContent = dz_scale.toFixed(1) + '×';
+    const pct = ((dz_scale - MIN_SCALE) / (MAX_SCALE - MIN_SCALE)) * 100;
+    dz_thumb.style.left = Math.max(0, Math.min(100, pct)) + '%';
+  }
+
+  // ── 边界限制：放大后拖动不能把图片拖出容器 ──
+  // 图片当前显示宽 = 原宽 * scale；最大位移 = (显示宽 - 容器宽) / 2，超出夹紧
+  function dz_clamp() {
+    const s = dz_stage();
+    const dispW = dz_imgW * dz_scale;
+    const dispH = dz_imgH * dz_scale;
+    // 允许的最大位移：图片在容器内完全显示时 tx 为居中值
+    const minTx = s.width - dispW;   // 图片右边缘 = 容器右边缘
+    const maxTx = 0;                  // 图片左边缘 = 容器左边缘
+    const minTy = s.height - dispH;
+    const maxTy = 0;
+    if (dispW <= s.width) { dz_tx = (s.width - dispW) / 2; }  // 缩小到容器内 → 强制水平居中
+    else { dz_tx = Math.max(minTx, Math.min(maxTx, dz_tx)); }
+    if (dispH <= s.height) { dz_ty = (s.height - dispH) / 2; }
+    else { dz_ty = Math.max(minTy, Math.min(maxTy, dz_ty)); }
+    dz_apply();
+  }
+
+  // ── 双指距离计算 ──
+  function dz_dist(a, b) {
+    const dx = a.clientX - b.clientX;
+    const dy = a.clientY - b.clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  // ── 双指中点计算 ──
+  function dz_mid(a, b) {
+    return { x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2 };
+  }
+
+  // ╔═════════════════════════════════════════════════════════╗
+  // ║  touchstart：记录手指数、起点、双击检测、双指缩放快照   ║
+  // ╚═════════════════════════════════════════════════════════╝
+  dz_viewer.addEventListener('touchstart', (dz_e) => {
+    dz_e.preventDefault();
+    dz_touchCount = dz_e.touches.length;
+    dz_img.style.transition = 'none';  // 双指缩放/单指拖动都不要动画，跟手
+
+    if (dz_touchCount === 1) {
+      // ── 单指：记录拖动起点和当前 transform 快照 ──
+      // 后面 touchmove 里每帧都从快照加增量，避免累积误差
+      dz_startPanX = dz_e.touches[0].clientX;
+      dz_startPanY = dz_e.touches[0].clientY;
+      dz_startTx = dz_tx;
+      dz_startTy = dz_ty;
+
+      // ── 双击检测：两次 touchend 间隔 < 300ms ──
+      const now = Date.now();
+      if (now - dz_lastTap < 300) {
+        dz_dblTap();
+      }
+      dz_lastTap = now;
+    }
+
+    if (dz_touchCount === 2) {
+      // ── 双指：记录缩放起始快照 ──
+      // ⭐ 防跳核心：按下瞬间把 scale/tx/ty/midpoint/dist 全拍下来
+      //    后续每一帧都从这个快照计算新的 transform，不会因为中间某帧丢数据而跳
+      const t1 = dz_e.touches[0], t2 = dz_e.touches[1];
+      const mid = dz_mid(t1, t2);
+      dz_pinchStart = {
+        midX: mid.x,
+        midY: mid.y,
+        scale: dz_scale,
+        tx: dz_tx,
+        ty: dz_ty,
+        dist: dz_dist(t1, t2)
+      };
+    }
+  }, { passive: false });
+
+  // ╔═════════════════════════════════════════════════════════╗
+  // ║  touchmove：双指缩放 / 单指拖动（scale>1 时）          ║
+  // ╚═════════════════════════════════════════════════════════╝
+  dz_viewer.addEventListener('touchmove', (dz_e) => {
+    dz_e.preventDefault();
+    const n = dz_e.touches.length;
+
+    if (n === 2 && dz_pinchStart) {
+      // ── 双指缩放 ──
+      const t1 = dz_e.touches[0], t2 = dz_e.touches[1];
+      const distNow = dz_dist(t1, t2);
+      const midNow = dz_mid(t1, t2);
+
+      // ① 按距离比例算新缩放倍数，夹在 1~4 之间
+      const ratio = distNow / dz_pinchStart.dist;
+      let newScale = dz_pinchStart.scale * ratio;
+      newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, newScale));
+
+      // ⭐ ② 防跳核心：让两指中点在屏幕上保持原位
+      //     推导：缩放前 midpoint 在屏幕坐标为 (midX, midY)，它对应图片上的某个点
+      //     缩放后这个点应该还在 (midX, midY)，解出新的 tx/ty
+      //     公式：newTx = midX - (midX - oldTx) * (newScale / oldScale)
+      const k = newScale / dz_pinchStart.scale;
+      let newTx = dz_pinchStart.midX - (dz_pinchStart.midX - dz_pinchStart.tx) * k;
+      let newTy = dz_pinchStart.midY - (dz_pinchStart.midY - dz_pinchStart.ty) * k;
+
+      // ③ 如果 scale 被 clamp 了，tx/ty 按实际 ratio 重算
+      //    （因为夹到边界后 k 变了，位置也要跟着调）
+      const actualK = newScale / dz_pinchStart.scale;
+      if (actualK !== k) {
+        newTx = dz_pinchStart.midX - (dz_pinchStart.midX - dz_pinchStart.tx) * actualK;
+        newTy = dz_pinchStart.midY - (dz_pinchStart.midY - dz_pinchStart.ty) * actualK;
+      }
+
+      dz_scale = newScale;
+      dz_tx = newTx;
+      dz_ty = newTy;
+      dz_apply();
+    }
+
+    if (n === 1 && dz_scale > 1) {
+      // ── 单指拖动（只有放大了才允许拖） ──
+      // 每帧位移 = 当前手指坐标 - 起点坐标；加到起始 tx/ty 上，保证跟手无累积误差
+      const t = dz_e.touches[0];
+      dz_tx = dz_startTx + (t.clientX - dz_startPanX);
+      dz_ty = dz_startTy + (t.clientY - dz_startPanY);
+      dz_apply();
+    }
+  }, { passive: false });
+
+  // ╔═════════════════════════════════════════════════════════╗
+  // ║  touchend：清理状态；缩回 1x 自动居中；边界夹紧        ║
+  // ╚═════════════════════════════════════════════════════════╝
+  dz_viewer.addEventListener('touchend', (dz_e) => {
+    dz_e.preventDefault();
+    dz_touchCount = dz_e.touches.length;
+
+    if (dz_touchCount < 2) {
+      dz_pinchStart = null;
+    }
+
+    if (dz_touchCount === 0) {
+      // ① 全部手指抬起 → 边界夹紧
+      if (dz_scale <= 1) {
+        // ⭐ 缩回 1x 自动居中：重新 fitCenter 让图片归位
+        dz_fitCenter();
+        dz_img.style.transition = 'transform .25s cubic-bezier(.4,0,.2,1)';
+        dz_apply();
+        setTimeout(() => { dz_img.style.transition = 'none'; }, 260);
+      } else {
+        dz_clamp();
+      }
+    }
+  }, { passive: false });
+
+  // ── 双击切换 1x ⇄ 2x ──
+  // 用 transition:transform .25s 实现平滑过渡，zoomCenter 让缩放围绕手指点
+  function dz_dblTap() {
+    dz_img.style.transition = 'transform .25s cubic-bezier(.4,0,.2,1)';
+    if (dz_scale > 1.1) {
+      // 2x → 1x：自动居中
+      dz_fitCenter();
+    } else {
+      // 1x → 2x：以容器中心为缩放锚点
+      const s = dz_stage();
+      const target = 2;
+      // 让图片中心对齐容器中心，scale=2 时的 tx/ty
+      dz_scale = target;
+      dz_tx = (s.width - dz_imgW * dz_scale) / 2;
+      dz_ty = (s.height - dz_imgH * dz_scale) / 2;
+    }
+    dz_apply();
+    setTimeout(() => { dz_img.style.transition = 'none'; }, 260);
+  }
+
+  // 初始占位（图片未加载时先给个临时 transform，避免 0x0）
+  dz_img.style.width = '100%';
+  dz_img.style.height = 'auto';
+  dz_img.onload = () => {
+    dz_img.style.width = '';
+    dz_img.style.height = '';
+    dz_fitCenter();
+    dz_apply();
+  };
+</script>
+</body>
+</html>

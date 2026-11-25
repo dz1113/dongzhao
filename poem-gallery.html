@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>古诗词图文展示</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    font-family:"Microsoft YaHei","PingFang SC",serif;
+    background:linear-gradient(135deg,#f5f0e8,#e8dcc8);
+    min-height:100vh;padding:40px 20px;
+    color:#3a2f22;
+  }
+  h1{
+    text-align:center;font-size:28px;letter-spacing:4px;
+    color:#5a3a1a;margin-bottom:8px;
+  }
+  .subtitle{text-align:center;color:#8a6e4a;font-size:14px;margin-bottom:36px;letter-spacing:2px}
+
+  /* 卡片网格 */
+  .poem-list{
+    max-width:1200px;margin:0 auto;
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));
+    gap:24px;
+  }
+  /* 上图下文卡片 */
+  .poem-card{
+    background:#fff;border-radius:14px;overflow:hidden;
+    box-shadow:0 8px 24px rgba(90,58,26,.12);
+    transition:transform .25s,box-shadow .25s;
+  }
+  .poem-card:hover{transform:translateY(-6px);box-shadow:0 14px 36px rgba(90,58,26,.2)}
+
+  .poem-card .pic{
+    width:100%;height:220px;background:#f0eadc;
+    object-fit:cover;display:block;
+  }
+  .poem-card .body{padding:20px 22px 24px}
+  .poem-card .title{
+    font-size:20px;font-weight:bold;color:#5a3a1a;
+    border-left:4px solid #c78a3a;padding-left:12px;margin-bottom:12px;
+    letter-spacing:1px;
+  }
+  .poem-card .content{
+    font-size:15px;line-height:2;color:#4a3e2e;
+    text-indent:2em;
+  }
+  .poem-card .content::before{
+    content:"「";font-size:22px;color:#c78a3a;vertical-align:-6px;margin-right:2px;
+  }
+  .poem-card .content::after{
+    content:"」";font-size:22px;color:#c78a3a;vertical-align:-6px;margin-left:2px;
+  }
+
+  /* 加载/错误提示 */
+  .state{text-align:center;padding:60px 20px;color:#8a6e4a;font-size:16px}
+  .state .hint{display:block;margin-top:10px;font-size:13px;color:#b09878}
+</style>
+</head>
+<body>
+  <h1>📜 古诗词图文集</h1>
+  <p class="subtitle">上图下文 · 数据来自本地 Express 服务器 db.json</p>
+  <div id="container" class="poem-list"><div class="state">加载中…</div></div>
+
+<script>
+  // 调用本地 Express 服务器获取数据（端口 3004）
+  fetch('http://localhost:3004/api/poems')
+    .then(res => {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    })
+    .then(poems => {
+      const container = document.getElementById('container');
+      if (!poems.length) {
+        container.innerHTML = '<div class="state">暂无数据</div>';
+        return;
+      }
+      container.innerHTML = poems.map(p => `
+        <div class="poem-card">
+          <img class="pic" src="${p.pic}" alt="${p.title}" onerror="this.style.background='#f0eadc';this.alt='图片加载失败'">
+          <div class="body">
+            <div class="title">${p.title}</div>
+            <div class="content">${p.content}</div>
+          </div>
+        </div>
+      `).join('');
+    })
+    .catch(err => {
+      document.getElementById('container').innerHTML = `
+        <div class="state">
+          ❌ 无法连接数据服务器（${err.message}）
+          <span class="hint">请先在 db 目录下执行 <code>node server.js</code> 启动服务，再刷新本页面</span>
+        </div>
+      `;
+    });
+</script>
+</body>
+</html>
