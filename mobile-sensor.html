@@ -79,6 +79,22 @@ body{display:flex;flex-direction:column;align-items:center;padding:40px 20px 60p
   background:#2d1b1b;color:#fff;border:none;border-radius:999px;
   font-size:14px;padding:12px 28px;letter-spacing:2px;cursor:pointer;font-family:inherit;
 }
+
+/* ── 下方演示视频区 ── */
+.dz_video-section{
+  width:100%;max-width:400px;margin:50px auto 20px;
+}
+.dz_video-section h3{
+  font-size:15px;color:#2d1b1b;letter-spacing:3px;margin-bottom:6px;
+  display:flex;align-items:center;gap:8px;justify-content:center;
+}
+.dz_video-section h3::before{content:"🎬";font-size:18px}
+.dz_video-section p{font-size:12px;color:#8b5a2b;margin-bottom:12px;text-align:center}
+.dz_video-wrap{
+  width:100%;border-radius:14px;overflow:hidden;
+  box-shadow:0 8px 24px rgba(0,0,0,.2);
+}
+.dz_video-wrap video{width:100%;display:block;background:#000}
 </style>
 </head>
 <body>
@@ -115,6 +131,18 @@ body{display:flex;flex-direction:column;align-items:center;padding:40px 20px 60p
   <button id="dz_btnDraw">🎲 点我抽一次</button>
   <p>当前设备不支持运动传感器<br>请用真机或 Chrome DevTools 设备模式打开</p>
 </div>
+
+<!-- 演示视频区 -->
+<section class="dz_video-section">
+  <h3>功能演示视频</h3>
+  <p>摇动手机触发 DeviceMotionEvent 加速度检测的完整交互</p>
+  <div class="dz_video-wrap">
+    <video controls playsinline preload="metadata">
+      <source src="videos/mobile-sensor-demo.mp4" type="video/mp4">
+      您的浏览器不支持 HTML5 视频播放
+    </video>
+  </div>
+</section>
 
 <script>
   // ═══════════════════════════════════════════════════════════
